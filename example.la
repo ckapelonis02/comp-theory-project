@@ -1,0 +1,4 @@
+-- My first Lambda program. File: myprog.la
+def main():
+  writeStr("Hello world!\n");
+enddef;
