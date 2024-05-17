@@ -64,12 +64,13 @@ int lineNum = 1;
 #define INTEGER  313
 #define FLOAT   314
 #define CONST_STRING 315
+#define STRINGIFY(x) #x
 
 %}
 
 ID      [a-zA-Z_][0-9a-zA-Z_]*
 DIGIT   [0-9]
-INTEGER {DIGIT}
+INTEGER (0|[1-9]{DIGIT}*)
 DECIMAL  ({INTEGER}"."{DIGIT}*)
 FLOAT    {DECIMAL}([eE][+-]?{INTEGER})
 STRING \"([0-9a-zA-Z".""," ""-""+""*""/"":""_""$""%""!""#""@""&""~""^""("")""\n""\t""r""\\"\"])*\"
@@ -138,6 +139,8 @@ STRING \"([0-9a-zA-Z".""," ""-""+""*""/"":""_""$""%""!""#""@""&""~""^""("")""\n"
 
 {ID} { return IDENTIFIER; }
 {INTEGER} { return INTEGER; }
+{FLOAT} { return FLOAT; }
+{STRING} { return CONST_STRING; }
 
 \n 					 ++lineNum;
 .           { printf("Unrecognized token %s in line %d: \n", yytext, lineNum); }
@@ -148,5 +151,5 @@ int main ()
 {
    int token;
    while ( (token = yylex()) != EOF )
-      printf("Line %d Token %d: %s\n", lineNum, token, yytext);
+      printf("Token %d: %s\n", token, yytext);
 }
