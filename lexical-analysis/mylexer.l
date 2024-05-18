@@ -71,10 +71,14 @@ DIGIT   [0-9]
 INTEGER (0|[1-9]{DIGIT}*)
 DECIMAL  ({INTEGER}"."{DIGIT}*)
 FLOAT    {DECIMAL}([eE][+-]?{INTEGER})?
-STRING \"[0-9a-zA-Z\., \-\+\*\/\:\_\$\%\!\#\@\&\~\^\(\)\\n\\t\\r\\""\"]*\"
+%x string
 
 %%                        
 ([ \r\t])|("--"[^\n]*)	/* skip these */
+
+\" { BEGIN(string); }
+<string>([0-9a-zA-Z\., \-\+\*\/\:\_\$\%\!\#\@\&\~\^\(\)]|\\[\\ntr\\"\\])* { printf("Token CONST_STRING: \"%s\"\n", yytext); return CONST_STRING; }
+<string>\" { BEGIN(INITIAL); }
 
 "scalar"     { printf("Token KEYWORD_SCALAR: %s\n", yytext); return KEYWORD_SCALAR; }
 "str"        { printf("Token KEYWORD_STR: %s\n", yytext); return KEYWORD_STR; }
@@ -138,7 +142,6 @@ STRING \"[0-9a-zA-Z\., \-\+\*\/\:\_\$\%\!\#\@\&\~\^\(\)\\n\\t\\r\\""\"]*\"
 {ID} { printf("Token IDENTIFIER: %s\n", yytext); return IDENTIFIER; }
 {INTEGER} { printf("Token INTEGER: %s\n", yytext); return INTEGER; }
 {FLOAT} { printf("Token FLOAT: %s\n", yytext); return FLOAT; }
-{STRING} { printf("Token CONST_STRING: %s\n", yytext); return CONST_STRING; }
 
 
 \n 					 ++lineNum;
