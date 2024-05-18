@@ -2224,6 +2224,6 @@ void yyfree (void * ptr )
 int main ()
 {
    int token;
-   while ( (token = yylex()) != EOF ) {}
+   while ( (token = yylex()) != EOF ) { printf("%d", lineNum); }
 }
 
