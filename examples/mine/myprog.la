@@ -1,5 +1,5 @@
 -- My first Lambda program. File: myprog.la
-@defmacro message "Hello world!\n"
+@defmacro my2pi (2*3.14159265)
 def main():
-writeStr(message);
+    writeStr(my2pi);
 enddef;

@@ -124,7 +124,8 @@ STRING   ([0-9a-zA-Z\., \-\+\*\/\:\_\$\%\!\#\@\&\~\^\(\)]|\\[\\ntr\\"\\])*
 <string>\"         { BEGIN(INITIAL); }
 
 "@defmacro"[ \r\t]+        { BEGIN(MACRO_DEF); }
-<MACRO_DEF>{ID}[ \r\t]+    { ref_macro_id = strdup(yytext); BEGIN(MACRO_REPL); }
+<MACRO_DEF>{ID}    { ref_macro_id = strdup(yytext); BEGIN(MACRO_REPL); }
+<MACRO_REPL>[ \r\t]+
 <MACRO_REPL>.*\n    { add_macro(create_macro(ref_macro_id, strdup(yytext))); BEGIN(INITIAL); }
 
 "scalar"           { printf("Token KEYWORD_SCALAR: %s\n", yytext); return KEYWORD_SCALAR; }
@@ -181,19 +182,26 @@ STRING   ([0-9a-zA-Z\., \-\+\*\/\:\_\$\%\!\#\@\&\~\^\(\)]|\\[\\ntr\\"\\])*
 "/="               { printf("Token DIV_ASSIGN: %s\n", yytext); return DIV_ASSIGN; }
 "%="               { printf("Token MOD_ASSIGN: %s\n", yytext); return MOD_ASSIGN; }
 ":="               { printf("Token COLON_ASSIGN: %s\n", yytext); return COLON_ASSIGN; }
-{ID}               { printf("Token IDENTIFIER: %s\n", yytext); return IDENTIFIER; }
+{ID}               {
+                     const char* repl = get_macro(yytext);
+                     if (repl == NULL) {
+                        printf("Token IDENTIFIER: %s\n", yytext);
+                        return IDENTIFIER;
+                     }
+                     else {
+                        for (int i = strlen(repl)-1; i >= 0; i--)
+                           unput(repl[i]);
+                     }
+                   }
 {INTEGER}          { printf("Token INTEGER: %s\n", yytext); return INTEGER; }
 {FLOAT}            { printf("Token FLOAT: %s\n", yytext); return FLOAT; }
 \n 					 ++lineNum;
 .                  { printf("Unrecognized token %s in line %d: \n", yytext, lineNum); }
-<<EOF>> 	        	return EOF;
+<<EOF>> 	        	 return EOF;
 
 %%
 int main ()
 {
    int token;
    while ( (token = yylex()) != EOF ) {}
-   for (int i = 0; i < avail; i++) {
-      printf("%s", macros_arr[i]->replacement);
-   }
 }
