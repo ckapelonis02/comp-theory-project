@@ -70,8 +70,8 @@ ID      [a-zA-Z_][0-9a-zA-Z_]*
 DIGIT   [0-9]
 INTEGER (0|[1-9]{DIGIT}*)
 DECIMAL  ({INTEGER}"."{DIGIT}*)
-FLOAT    {DECIMAL}([eE][+-]?{INTEGER})
-STRING \"([0-9a-zA-Z".""," ""-""+""*""/"":""_""$""%""!""#""@""&""~""^""("")""\n""\t""r""\\"\"])*\"
+FLOAT    {DECIMAL}([eE][+-]?{INTEGER})?
+STRING \"[0-9a-zA-Z\., \-\+\*\/\:\_\$\%\!\#\@\&\~\^\(\)\\n\\t\\r\\""\"]*\"
 
 %%                        
 ([ \r\t])|("--"[^\n]*)	/* skip these */

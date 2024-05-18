@@ -1,4 +1,7 @@
--- My first Lambda program. File: myprog.la
-def main():
-  writeStr("Hello world!\n");
-enddef;
+x y1 angle myValue Distance_02
+0 42 1233503 10001
+42.4 4.2e1 0.420E+2 42000.0e-3
+True False
+"M" "\n" "\"" "abc" "Route 66" "Hello world!\n" "Item:\t\"Laser Printer\"\nPrice:\t$142\n"
+; ( ) , [ ] : .
+-- Example line comment
