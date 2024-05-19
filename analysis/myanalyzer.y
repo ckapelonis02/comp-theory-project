@@ -1,14 +1,16 @@
 %{
 #include <stdio.h>
+#include "cgen.h"
     
-int yyerror(char *s) {
-    return 1;
-}
-
 extern int yylex(void);
 extern int lineNum;
 
 %}
+
+%union
+{
+    char* str;
+}
 
 %token KEYWORD_SCALAR   258
 %token KEYWORD_STR      259
@@ -65,19 +67,28 @@ extern int lineNum;
 %token MOD_ASSIGN       310
 %token COLON_ASSIGN     311
 %token IDENTIFIER       312
-%token INTEGER          313
+%token <str> INTEGER          313
 %token FLOAT            314
 %token CONST_STRING     315
-    
+
+%start input
+
 %%
-    program:
-        ;
+input:
+    %empty
+    |INTEGER
+{
+    puts(c_prologue);
+    printf("%s", template("%s", $1));
+}
+;
     
 %%
     
 int main() {
     if ( yyparse() == 0 )
-        printf("Accepted!\n");
+        printf("\nAccepted!\n");
     else
-        printf("Rejected!\n");
+        printf("\nRejected!\n");
 }
+

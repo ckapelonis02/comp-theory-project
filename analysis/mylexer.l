@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cgen.h"
 #include "myanalyzer.tab.h"
 #define MACROS_SIZE 100
 #define LINE_SIZE 512
@@ -113,7 +114,10 @@ STRING   ([0-9a-zA-Z\., \-\+\*\/\:\_\$\%\!\#\@\&\~\^\(\)]|\\[\\ntr\\"\\])*
                            unput(repl[i]);
                      }
                    }
-{INTEGER}          { printf("Token INTEGER: %s\n", yytext); return INTEGER; }
+{INTEGER}          {
+   printf("Token INTEGER: %s\n", yytext);
+   yylval.str = strdup(yytext);
+   return INTEGER; }
 {FLOAT}            { printf("Token FLOAT: %s\n", yytext); return FLOAT; }
 \n 					 ++lineNum;
 .                  {
