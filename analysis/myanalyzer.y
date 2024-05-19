@@ -73,16 +73,27 @@ extern int lineNum;
 
 %start input
 
+%type<str> main_header
+%type<str> main_body
 %%
+
 input:
-    %empty
-    |INTEGER
+    main_header main_body KEYWORD_ENDDEF SEMICOLON
 {
     puts(c_prologue);
-    printf("%s", template("%s", $1));
+    puts("}");
 }
 ;
-    
+
+main_header:
+    KEYWORD_DEF KEYWORD_MAIN LPAREN RPAREN COLON
+              {puts("int main() {");};
+
+main_body:
+    %empty {};
+
+
+
 %%
     
 int main() {
