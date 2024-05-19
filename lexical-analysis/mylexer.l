@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#define MACROS_SIZE 100
+#define LINE_SIZE 512
 
 // Define a structure to store macros
 typedef struct Macro {
@@ -9,8 +11,29 @@ typedef struct Macro {
    char *replacement;
 } Macro;
 
-Macro* macros_arr[100];
+Macro* macros_arr[MACROS_SIZE];
 int avail = 0;
+
+char* print_line_n(FILE *fp, int n) {
+   char line[LINE_SIZE];
+   int current_line = 0;
+
+   // Move to the beginning of the file
+   rewind(fp);
+
+   // Read up to the n-th line
+   while (fgets(line, sizeof(line), fp) != NULL) {
+      if (++current_line == n) {
+         // Allocate memory for the line to return
+         char* result = malloc(strlen(line) + 1);
+         if (result != NULL)
+            strcpy(result, line);
+
+         return result;
+      }
+   }
+   return NULL;
+}
 
 // Create a macro
 Macro* create_macro(const char *identifier, const char *replacement) {
@@ -196,7 +219,10 @@ STRING   ([0-9a-zA-Z\., \-\+\*\/\:\_\$\%\!\#\@\&\~\^\(\)]|\\[\\ntr\\"\\])*
 {INTEGER}          { printf("Token INTEGER: %s\n", yytext); return INTEGER; }
 {FLOAT}            { printf("Token FLOAT: %s\n", yytext); return FLOAT; }
 \n 					 ++lineNum;
-.                  { printf("Unrecognized token %s in line %d: \n", yytext, lineNum); }
+.                  {
+                     printf("Unrecognized token %s in line %d: %s\n", yytext, lineNum, print_line_n(yyin, lineNum));
+                     exit(1);
+                   }
 <<EOF>> 	        	 return EOF;
 
 %%
