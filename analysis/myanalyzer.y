@@ -89,6 +89,13 @@ extern int lineNum;
 %type<str> func_param_list
 %type<str> return_type
 
+%type<str> dt
+%type<str> primitive_dt
+%type<str> comp_dt
+%type<str> sized_arr_dt
+%type<str> arr_dt
+%type<str> bool_dt
+
 %%
 
 input:
@@ -97,8 +104,6 @@ input:
 //  | var_decl input
 //  | const_decl input
 //  | comp_type_decl input
-{
-};
 
 main_func:
   main_header main_body func_end
@@ -157,6 +162,81 @@ return_type:
   {
     $$ = "";
   };
+
+dt:
+  primitive_dt
+  | KEYWORD_COMP
+  {
+    $$ = "comp";
+  };
+  | sized_arr_dt
+  | arr_dt
+
+arr_dt:
+  LBRACKET RBRACKET COLON primitive_dt
+  {
+    $$ = template("[]:%s", $4);
+  };
+  | LBRACKET RBRACKET COLON IDENTIFIER
+  {
+    $$ = template("[]:%s", $4);
+  };
+
+sized_arr_dt:
+  LBRACKET INTEGER RBRACKET COLON primitive_dt
+  {
+    $$ = template("[%s]:%s", $2, $5);
+  };
+  | LBRACKET INTEGER RBRACKET COLON IDENTIFIER
+  {
+    $$ = template("[%s]:%s", $2, $5);
+  };
+
+primitive_dt:
+  KEYWORD_SCALAR
+  {
+    $$ = "scalar";
+  };
+  | KEYWORD_INTEGER
+  {
+    $$ = "integer";
+  };
+  | KEYWORD_STR
+  {
+    $$ = "str";
+  };
+  | KEYWORD_BOOL
+  {
+    $$ = "bool";
+  };
+
+
+bool_dt:
+  KEYWORD_TRUE
+  {
+    $$ = "True";
+  };
+  | KEYWORD_FALSE
+  {
+    $$ = "False";
+  };
+
+//const_decl:
+//  KEYWORD_CONST IDENTIFIER EQ val primitive_dt;
+//  {
+//    $$ = template("const %s = %s: %s", $2, $4, $5);
+//  };
+
+
+
+
+
+
+
+
+
+
+
 
 
 %%
