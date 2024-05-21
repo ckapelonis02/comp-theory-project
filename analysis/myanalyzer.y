@@ -69,9 +69,14 @@ extern int lineNum;
 %token <str> IDENTIFIER       312
 %token <str> INTEGER          313
 %token <str> FLOAT            314
-%token CONST_STRING     315
+%token <str> CONST_STRING     315
 
 %start input
+
+%type<str> func_decl_rec
+%type<str> var_decl_rec
+%type<str> const_decl_rec
+%type<str> comp_type_decl_rec
 
 %type<str> comp_type_decl
 %type<str> const_decl
@@ -87,23 +92,69 @@ extern int lineNum;
 %type<str> func_end
 %type<str> func_name
 %type<str> func_param_list
+%type<str> func_declarations
+%type<str> func_stmts
+%type<str> params
+%type<str> var_type
 %type<str> return_type
 
 %type<str> dt
 %type<str> primitive_dt
-%type<str> comp_dt
 %type<str> sized_arr_dt
 %type<str> arr_dt
 %type<str> bool_dt
+
+%type<str> stmt
+%type<str> return_stmt
+
+%type<str> var_decl_list
+%type<str> var_name
+
+%type<str> comp_header
+%type<str> comp_body
+%type<str> comp_end
+
+%type<str> const_expr
+
+
+
 
 %%
 
 input:
   main_func
-  | func_decl input
-//  | var_decl input
-//  | const_decl input
-//  | comp_type_decl input
+  | func_decl_rec input
+  | var_decl_rec input
+  | const_decl_rec input
+  | comp_type_decl_rec input
+
+func_decl_rec:
+  func_decl
+  | func_decl func_decl_rec
+  {
+    $$ = template("%s\n%s", $1, $2);
+  };
+
+var_decl_rec:
+  var_decl
+  | var_decl var_decl_rec
+  {
+    $$ = template("%s\n%s", $1, $2);
+  };
+
+const_decl_rec:
+  const_decl
+  | const_decl const_decl_rec
+  {
+    $$ = template("%s\n%s", $1, $2);
+  };
+
+comp_type_decl_rec:
+  const_decl
+  | const_decl comp_type_decl_rec
+  {
+    $$ = template("%s\n%s", $1, $2);
+  };
 
 main_func:
   main_header main_body func_end
@@ -140,7 +191,7 @@ func_header:
   {
     $$ = template("def %s(%s):\n", $2, $4);
   };
-  | KEYWORD_DEF IDENTIFIER LPAREN func_param_list RPAREN " -> " return_type COLON
+  | KEYWORD_DEF IDENTIFIER LPAREN func_param_list RPAREN " -> " var_type COLON
   {
     $$ = template("def %s(%s): ->  %s\n", $2, $4, $7);
   };
@@ -150,18 +201,41 @@ func_param_list:
   {
     $$ = "";
   };
+  | params
+
+params:
+  IDENTIFIER COLON var_type
+  {
+    $$ = template("%s: %s", $1, $3);
+  };
+| IDENTIFIER COLON var_type COMMA params
+  {
+    $$ = template("%s: %s, %s", $1, $3, $5);
+  };
 
 func_body:
-  %empty
+  func_stmts
+  | func_declarations func_body
   {
-    $$ = "";
+    $$ = template("%s\n\n%s", $1, $2);
+  };
+  | func_body return_stmt
+  {
+    $$ = template("%s\n\n%s", $1, $2);
   };
 
-return_type:
+func_stmts:
   %empty
-  {
-    $$ = "";
-  };
+{
+  $$ = "";
+};
+
+return_type:
+  var_type
+
+var_type:
+  primitive_dt
+  | IDENTIFIER
 
 dt:
   primitive_dt
@@ -221,13 +295,83 @@ bool_dt:
     $$ = "False";
   };
 
-//const_decl:
-//  KEYWORD_CONST IDENTIFIER EQ val primitive_dt;
-//  {
-//    $$ = template("const %s = %s: %s", $2, $4, $5);
-//  };
+return_stmt:
+  KEYWORD_RETURN SEMICOLON
+  {
+    $$ = "return;";
+  };
+| KEYWORD_RETURN expr SEMICOLON
+  {
+    $$ = template("return %s;", $1);
+  };
 
+var_decl:
+  var_decl_list COLON var_type SEMICOLON
+  {
+    $$ = template("%s: %s;", $1, $3);
+  };
 
+var_decl_list:
+  var_name
+  | var_name COMMA var_decl_list
+  {
+    $$ = template("%s, %s;", $1, $3);
+  };
+
+var_name:
+  IDENTIFIER
+  | IDENTIFIER LBRACKET INTEGER RBRACKET
+  {
+    $$ = template("%s [%s]", $1, $3);
+  };
+
+comp_type_decl:
+  comp_header comp_body comp_end
+  {
+    $$ = template("%s\n%s\n%s", $1, $2, $3);
+  };
+
+comp_var_name:
+  '#' IDENTIFIER
+  {
+    $$ = template("#%s", $2);
+  };
+  | '#' IDENTIFIER LBRACKET INTEGER RBRACKET
+  {
+    $$ = template("#%s [%s]", $1, $3);
+  };
+
+comp_body:
+  %empty
+  | comp_var_name
+  | comp_body func_decl_rec
+  {
+    $$ = template("%s\n%s", $1, $2);
+  };
+
+comp_header:
+  KEYWORD_COMP IDENTIFIER
+  {
+    $$ = template("comp %s", $2);
+  };
+
+comp_end:
+  KEYWORD_ENDCOMP SEMICOLON
+  {
+    $$ = "endcomp;";
+  };
+
+const_decl:
+  KEYWORD_CONST IDENTIFIER EQ const_expr primitive_dt SEMICOLON
+  {
+    $$ = template("const %s = %s: %s", $2, $4, $5);
+  };
+
+const_expr:
+  %empty
+  {
+    $$ = ";";
+  };
 
 
 
