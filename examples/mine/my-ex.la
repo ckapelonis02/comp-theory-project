@@ -1,2 +1,5 @@
+def my_func():
+enddef;
+
 def main():
 enddef;

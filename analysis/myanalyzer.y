@@ -1,7 +1,7 @@
 %{
 #include <stdio.h>
 #include "cgen.h"
-    
+
 extern int yylex(void);
 extern int lineNum;
 
@@ -9,7 +9,7 @@ extern int lineNum;
 
 %union
 {
-    char* str;
+  char* str;
 }
 
 %token KEYWORD_SCALAR   258
@@ -66,40 +66,104 @@ extern int lineNum;
 %token DIV_ASSIGN       309
 %token MOD_ASSIGN       310
 %token COLON_ASSIGN     311
-%token IDENTIFIER       312
+%token <str> IDENTIFIER       312
 %token <str> INTEGER          313
-%token FLOAT            314
+%token <str> FLOAT            314
 %token CONST_STRING     315
 
 %start input
 
+%type<str> comp_type_decl
+%type<str> const_decl
+%type<str> var_decl
+%type<str> func_decl
+%type<str> main_func
+
 %type<str> main_header
 %type<str> main_body
+
+%type<str> func_header
+%type<str> func_body
+%type<str> func_end
+%type<str> func_name
+%type<str> func_param_list
+%type<str> return_type
+
 %%
 
 input:
-    main_header main_body KEYWORD_ENDDEF SEMICOLON
+  main_func
+  | func_decl input
+//  | var_decl input
+//  | const_decl input
+//  | comp_type_decl input
 {
-    puts(c_prologue);
-    puts("}");
-}
-;
+};
+
+main_func:
+  main_header main_body func_end
+  {
+    printf("%s %s %s", $1, $2, $3);
+  };
 
 main_header:
-    KEYWORD_DEF KEYWORD_MAIN LPAREN RPAREN COLON
-              {puts("int main() {");};
+  KEYWORD_DEF KEYWORD_MAIN LPAREN RPAREN COLON
+  {
+    $$ = "def main():\n";
+  };
 
 main_body:
-    %empty {};
+  %empty
+  {
+    $$ = "";
+  };
 
+func_end:
+  KEYWORD_ENDDEF SEMICOLON
+  {
+    $$ = "enddef;\n";
+  };
+
+func_decl:
+  func_header func_body func_end
+  {
+    printf("%s %s %s", $1, $2, $3);
+  };
+
+func_header:
+  KEYWORD_DEF IDENTIFIER LPAREN func_param_list RPAREN COLON
+  {
+    $$ = template("def %s(%s):\n", $2, $4);
+  };
+  | KEYWORD_DEF IDENTIFIER LPAREN func_param_list RPAREN " -> " return_type COLON
+  {
+    $$ = template("def %s(%s): ->  %s\n", $2, $4, $7);
+  };
+
+func_param_list:
+  %empty
+  {
+    $$ = "";
+  };
+
+func_body:
+  %empty
+  {
+    $$ = "";
+  };
+
+return_type:
+  %empty
+  {
+    $$ = "";
+  };
 
 
 %%
-    
-int main() {
-    if ( yyparse() == 0 )
-        printf("\nAccepted!\n");
-    else
-        printf("\nRejected!\n");
-}
 
+int main() {
+  if (yyparse() == 0)
+    printf("\nAccepted!\n");
+  else
+    printf("\nRejected!\n");
+}

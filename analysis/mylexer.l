@@ -44,7 +44,7 @@ STRING   ([0-9a-zA-Z\., \-\+\*\/\:\_\$\%\!\#\@\&\~\^\(\)]|\\[\\ntr\\"\\])*
 ([ \r\t])|("--"[^\n]*)	/* skip these */
 
 \"                 { BEGIN(string); }
-<string>{STRING}   { VERBOSE_PRINT("Token CONST_STRING: \"%s\"\n", yytext); return CONST_STRING; }
+<string>{STRING}   { VERBOSE_PRINT("Token CONST_STRING: \"%s\"\n", yytext); yylval.str = strdup(yytext); return CONST_STRING; }
 <string>\"         { BEGIN(INITIAL); }
 
 "@defmacro"[ \r\t]+        { BEGIN(MACRO_DEF); }
@@ -110,6 +110,7 @@ STRING   ([0-9a-zA-Z\., \-\+\*\/\:\_\$\%\!\#\@\&\~\^\(\)]|\\[\\ntr\\"\\])*
               const char* repl = get_macro(yytext);
               if (repl == NULL) {
                 VERBOSE_PRINT("Token IDENTIFIER: %s\n", yytext);
+                yylval.str = strdup(yytext);
                 return IDENTIFIER;
               }
               else {
@@ -121,7 +122,7 @@ STRING   ([0-9a-zA-Z\., \-\+\*\/\:\_\$\%\!\#\@\&\~\^\(\)]|\\[\\ntr\\"\\])*
   VERBOSE_PRINT("Token INTEGER: %s\n", yytext);
   yylval.str = strdup(yytext);
   return INTEGER; }
-{FLOAT}            { VERBOSE_PRINT("Token FLOAT: %s\n", yytext); return FLOAT; }
+{FLOAT}            { VERBOSE_PRINT("Token FLOAT: %s\n", yytext); yylval.str = strdup(yytext); return FLOAT; }
 \n 					 ++lineNum;
 .                  {
               VERBOSE_PRINT("Unrecognized token %s in line %d: %s\n", yytext, lineNum, print_line_n(yyin, lineNum));
