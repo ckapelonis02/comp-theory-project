@@ -7,6 +7,8 @@
 #include "cgen.h"
 
 extern int lineNum;
+extern char* print_line_n(FILE *fp, int n);
+extern FILE* yyin;
 
 void ssopen(sstream *S) { S->stream = open_memstream(&S->buffer, &S->bufsize); }
 
@@ -44,13 +46,12 @@ char *template(const char *pat, ...) {
         Report errors
 */
 void yyerror(char const *pat, ...) {
-  va_list arg;
-  fprintf(stderr, "Syntax error in line %d: ", lineNum);
-
-  va_start(arg, pat);
-  vfprintf(stderr, pat, arg);
-  va_end(arg);
-  fprintf(stderr, "\n");
+//  va_list arg;
+  fprintf(stderr, "Syntax error in line %d: %s\n", lineNum, print_line_n(yyin, lineNum));
+//  va_start(arg, pat);
+//  vfprintf(stderr, pat, arg);
+//  va_end(arg);
+//  fprintf(stderr, "\n");
 
   yyerror_count++;
 }

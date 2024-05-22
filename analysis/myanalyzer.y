@@ -1,5 +1,6 @@
 %{
 #include <stdio.h>
+#include <stdlib.h>
 #include "cgen.h"
 
 extern int yylex(void);
@@ -76,27 +77,25 @@ extern int lineNum;
 %type<str> func_decl_rec
 %type<str> var_decl_rec
 %type<str> const_decl_rec
-%type<str> comp_type_decl_rec
+%type<str> comp_decl_rec
 
-%type<str> comp_type_decl
-%type<str> const_decl
-%type<str> var_decl
-%type<str> func_decl
 %type<str> main_func
-
 %type<str> main_header
 %type<str> main_body
+%type<str> main_end
 
+%type<str> func_decl
 %type<str> func_header
 %type<str> func_body
 %type<str> func_end
-%type<str> func_name
 %type<str> func_param_list
+%type<str> func_arg_type
+%type<str> func_arg
 %type<str> func_declarations
+%type<str> func_arg_name
 %type<str> func_stmts
-%type<str> params
-%type<str> var_type
 %type<str> return_type
+%type<str> return_stmt
 
 %type<str> dt
 %type<str> primitive_dt
@@ -104,57 +103,109 @@ extern int lineNum;
 %type<str> arr_dt
 %type<str> bool_dt
 
-%type<str> stmt
-%type<str> return_stmt
-
 %type<str> var_decl_list
+%type<str> var_decl
 %type<str> var_name
+%type<str> var_type
 
+%type<str> comp_decl
 %type<str> comp_header
 %type<str> comp_body
 %type<str> comp_end
+%type<str> comp_var_name
 
+%type<str> const_decl
 %type<str> const_expr
 
-
+%type<str> stmt
+%type<str> expr
+%type<str> pos_integer
 
 
 %%
 
+
+/*
+*                 INPUT PROGRAM
+* */
 input:
-  main_func
-  | func_decl_rec input
-  | var_decl_rec input
-  | const_decl_rec input
-  | comp_type_decl_rec input
+//  func_header { printf("%s", $1); };
+//  main_func
+//  | func_decl_rec input
+//  | var_decl_rec input
+  func_decl_rec
+//  | const_decl_rec input
+//  | comp_type_decl_rec input
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+*                 RECURSIVE BASIC COMPONENTS
+* */
 
 func_decl_rec:
   func_decl
-  | func_decl func_decl_rec
   {
-    $$ = template("%s\n%s", $1, $2);
+    printf("%s\n", $1);
+  };
+  | func_decl_rec func_decl
+  {
+    printf("%s\n", $2);
   };
 
 var_decl_rec:
   var_decl
-  | var_decl var_decl_rec
   {
-    $$ = template("%s\n%s", $1, $2);
+    printf("%s\n", $1);
+  };
+  | var_decl_rec var_decl
+  {
+    printf("%s\n", $2);
   };
 
 const_decl_rec:
   const_decl
-  | const_decl const_decl_rec
   {
-    $$ = template("%s\n%s", $1, $2);
+    printf("%s\n", $1);
+  };
+  | const_decl_rec const_decl
+  {
+    printf("%s\n", $2);
   };
 
-comp_type_decl_rec:
-  const_decl
-  | const_decl comp_type_decl_rec
+comp_decl_rec:
+  comp_decl
   {
-    $$ = template("%s\n%s", $1, $2);
+    printf("%s\n", $1);
   };
+  | comp_decl_rec comp_decl
+  {
+    printf("%s\n", $2);
+  };
+
+
+
+
+
+
+
+
+
+
+/*
+*                  MAIN FUNCTION
+* */
 
 main_func:
   main_header main_body func_end
@@ -174,16 +225,28 @@ main_body:
     $$ = "";
   };
 
-func_end:
-  KEYWORD_ENDDEF SEMICOLON
-  {
-    $$ = "enddef;\n";
-  };
+main_end:
+  func_end
 
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+              FUNCTIONS
+*/
 func_decl:
   func_header func_body func_end
   {
-    printf("%s %s %s", $1, $2, $3);
+    $$ = template("%s%s%s", $1, $2, $3);
   };
 
 func_header:
@@ -191,38 +254,57 @@ func_header:
   {
     $$ = template("def %s(%s):\n", $2, $4);
   };
-  | KEYWORD_DEF IDENTIFIER LPAREN func_param_list RPAREN " -> " var_type COLON
+  | KEYWORD_DEF IDENTIFIER LPAREN func_param_list RPAREN MINUS GT return_type COLON
   {
-    $$ = template("def %s(%s): ->  %s\n", $2, $4, $7);
+    $$ = template("def %s(%s) -> %s:\n", $2, $4, $8);
   };
+
+return_type:
+  var_type
 
 func_param_list:
   %empty
   {
     $$ = "";
   };
-  | params
+  | func_arg
+  | func_param_list COMMA func_arg
+  {
+    $$ = template("%s, %s", $1, $3);
+  };
 
-params:
-  IDENTIFIER COLON var_type
+func_arg:
+  func_arg_name COLON func_arg_type
   {
     $$ = template("%s: %s", $1, $3);
   };
-| IDENTIFIER COLON var_type COMMA params
+
+func_arg_name:
+  IDENTIFIER
+  | IDENTIFIER LBRACKET RBRACKET
   {
-    $$ = template("%s: %s, %s", $1, $3, $5);
+    $$ = template("%s[]", $1);
   };
 
-func_body:
-  func_stmts
-  | func_declarations func_body
-  {
-    $$ = template("%s\n\n%s", $1, $2);
-  };
-  | func_body return_stmt
-  {
-    $$ = template("%s\n\n%s", $1, $2);
-  };
+func_arg_type:
+  var_type
+
+//func_body:
+//  func_stmts
+//  | func_declarations func_body
+//  {
+//    $$ = template("%s\n\n%s", $1, $2);
+//  };
+//  | func_body return_stmt
+//  {
+//    $$ = template("%s\n\n%s", $1, $2);
+//  };
+
+func_declarations:
+  %empty
+{
+  $$ = "";
+};
 
 func_stmts:
   %empty
@@ -230,13 +312,81 @@ func_stmts:
   $$ = "";
 };
 
-return_type:
-  var_type
+return_stmt:
+  KEYWORD_RETURN SEMICOLON
+  {
+    $$ = "return;";
+  };
+  | KEYWORD_RETURN expr SEMICOLON
+  {
+    $$ = template("return %s;", $2);
+  };
+
+func_end:
+  KEYWORD_ENDDEF SEMICOLON
+  {
+    $$ = "enddef;\n";
+  };
+
+
+
+
+
+
+
+
+
+
+
+/*
+*                  VARIABLES
+* */
+var_decl_list:
+  var_name
+  | var_decl_list COMMA var_name
+  {
+    $$ = template("%s, %s", $1, $3);
+  };
+
+var_decl:
+  var_decl_list COLON var_type SEMICOLON
+  {
+    $$ = template("%s: %s;", $1, $3);
+  };
+
+var_decl_list:
+  var_name
+  | var_decl_list COMMA var_name
+  {
+    $$ = template("%s, %s", $1, $3);
+  };
+
+var_name:
+  IDENTIFIER
+  | IDENTIFIER LBRACKET pos_integer RBRACKET
+  {
+    $$ = template("%s[%s]", $1, $3);
+  };
 
 var_type:
   primitive_dt
   | IDENTIFIER
 
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+*                  DATA TYPES
+* */
 dt:
   primitive_dt
   | KEYWORD_COMP
@@ -247,21 +397,13 @@ dt:
   | arr_dt
 
 arr_dt:
-  LBRACKET RBRACKET COLON primitive_dt
-  {
-    $$ = template("[]:%s", $4);
-  };
-  | LBRACKET RBRACKET COLON IDENTIFIER
+  LBRACKET RBRACKET COLON var_type
   {
     $$ = template("[]:%s", $4);
   };
 
 sized_arr_dt:
-  LBRACKET INTEGER RBRACKET COLON primitive_dt
-  {
-    $$ = template("[%s]:%s", $2, $5);
-  };
-  | LBRACKET INTEGER RBRACKET COLON IDENTIFIER
+  LBRACKET pos_integer RBRACKET COLON var_type
   {
     $$ = template("[%s]:%s", $2, $5);
   };
@@ -284,7 +426,6 @@ primitive_dt:
     $$ = "bool";
   };
 
-
 bool_dt:
   KEYWORD_TRUE
   {
@@ -295,37 +436,23 @@ bool_dt:
     $$ = "False";
   };
 
-return_stmt:
-  KEYWORD_RETURN SEMICOLON
-  {
-    $$ = "return;";
-  };
-| KEYWORD_RETURN expr SEMICOLON
-  {
-    $$ = template("return %s;", $1);
-  };
 
-var_decl:
-  var_decl_list COLON var_type SEMICOLON
-  {
-    $$ = template("%s: %s;", $1, $3);
-  };
 
-var_decl_list:
-  var_name
-  | var_name COMMA var_decl_list
-  {
-    $$ = template("%s, %s;", $1, $3);
-  };
 
-var_name:
-  IDENTIFIER
-  | IDENTIFIER LBRACKET INTEGER RBRACKET
-  {
-    $$ = template("%s [%s]", $1, $3);
-  };
 
-comp_type_decl:
+
+
+
+
+
+
+
+
+
+/*
+*                  COMP TYPE
+* */
+comp_decl:
   comp_header comp_body comp_end
   {
     $$ = template("%s\n%s\n%s", $1, $2, $3);
@@ -338,7 +465,7 @@ comp_var_name:
   };
   | '#' IDENTIFIER LBRACKET INTEGER RBRACKET
   {
-    $$ = template("#%s [%s]", $1, $3);
+    $$ = template("#%s [%s]", $2, $4);
   };
 
 comp_body:
@@ -361,17 +488,91 @@ comp_end:
     $$ = "endcomp;";
   };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+*                  CONST
+* */
 const_decl:
-  KEYWORD_CONST IDENTIFIER EQ const_expr primitive_dt SEMICOLON
+  KEYWORD_CONST IDENTIFIER ASSIGN const_expr COLON primitive_dt SEMICOLON
   {
-    $$ = template("const %s = %s: %s", $2, $4, $5);
+    $$ = template("const %s = %s: %s;", $2, $4, $6);
   };
 
 const_expr:
   %empty
   {
-    $$ = ";";
+    $$ = "";
   };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+*                  GENERAL
+* */
+pos_integer:
+  INTEGER
+  {
+    if (atoi($1) > 0)
+      $$ = $1;
+    else
+      exit(1);
+  };
+
+stmt:
+  %empty
+{
+  $$ = "";
+};
+
+expr:
+  %empty
+{
+  $$ = "";
+};
+
+
+
+
+
+
 
 
 

@@ -125,7 +125,7 @@ STRING   ([0-9a-zA-Z\., \-\+\*\/\:\_\$\%\!\#\@\&\~\^\(\)]|\\[\\ntr\\"\\])*
 {FLOAT}            { VERBOSE_PRINT("Token FLOAT: %s\n", yytext); yylval.str = strdup(yytext); return FLOAT; }
 \n 					 ++lineNum;
 .                  {
-              VERBOSE_PRINT("Unrecognized token %s in line %d: %s\n", yytext, lineNum, print_line_n(yyin, lineNum));
+              printf("Unrecognized token %s in line %d: %s\n", yytext, lineNum, print_line_n(yyin, lineNum));
               exit(1);
             }
 <<EOF>> 	        	 return EOF;
