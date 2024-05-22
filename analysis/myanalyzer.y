@@ -71,6 +71,7 @@ extern int lineNum;
 %token <str> INTEGER          313
 %token <str> FLOAT            314
 %token <str> CONST_STRING     315
+%token HASHTAG                316
 
 %start input
 
@@ -112,7 +113,11 @@ extern int lineNum;
 %type<str> comp_header
 %type<str> comp_body
 %type<str> comp_end
+%type<str> comp_var_decl_rec
+%type<str> comp_var_decl
+%type<str> comp_var_decl_list
 %type<str> comp_var_name
+%type<str> comp_func_decl_rec
 
 %type<str> const_decl
 %type<str> const_expr
@@ -130,12 +135,13 @@ extern int lineNum;
 * */
 input:
 //  func_header { printf("%s", $1); };
+//  comp_decl_rec
+
 //  main_func
 //  | func_decl_rec input
 //  | var_decl_rec input
-  func_decl_rec
 //  | const_decl_rec input
-//  | comp_type_decl_rec input
+//  | comp_decl_rec input
 
 
 
@@ -220,10 +226,7 @@ main_header:
   };
 
 main_body:
-  %empty
-  {
-    $$ = "";
-  };
+  func_body
 
 main_end:
   func_end
@@ -300,6 +303,12 @@ func_arg_type:
 //    $$ = template("%s\n\n%s", $1, $2);
 //  };
 
+func_body:
+  %empty
+{
+  $$ = "";
+};
+
 func_declarations:
   %empty
 {
@@ -352,13 +361,6 @@ var_decl:
   var_decl_list COLON var_type SEMICOLON
   {
     $$ = template("%s: %s;", $1, $3);
-  };
-
-var_decl_list:
-  var_name
-  | var_decl_list COMMA var_name
-  {
-    $$ = template("%s, %s", $1, $3);
   };
 
 var_name:
@@ -458,28 +460,63 @@ comp_decl:
     $$ = template("%s\n%s\n%s", $1, $2, $3);
   };
 
-comp_var_name:
-  '#' IDENTIFIER
+comp_header:
+  KEYWORD_COMP IDENTIFIER COLON
   {
-    $$ = template("#%s", $2);
-  };
-  | '#' IDENTIFIER LBRACKET INTEGER RBRACKET
-  {
-    $$ = template("#%s [%s]", $2, $4);
+    $$ = template("comp %s:", $2);
   };
 
 comp_body:
-  %empty
-  | comp_var_name
-  | comp_body func_decl_rec
+  comp_var_decl_rec
   {
-    $$ = template("%s\n%s", $1, $2);
+    $$ = template("%s", $1);
+  };
+  | comp_var_decl_rec comp_func_decl_rec
+  {
+    $$ = template("%s\n%s\n", $1, $2);
   };
 
-comp_header:
-  KEYWORD_COMP IDENTIFIER
+comp_func_decl_rec:
+  func_decl
   {
-    $$ = template("comp %s", $2);
+    $$ = template("%s\n", $1);
+  };
+  | comp_func_decl_rec func_decl
+  {
+    $$ = template("%s%s\n", $$, $2);
+  };
+
+comp_var_decl_rec:
+  comp_var_decl
+  {
+    $$ = template("%s\n", $1);
+  };
+  | comp_var_decl_rec comp_var_decl
+  {
+    $$ = template("%s%s\n", $$, $2);
+  };
+
+comp_var_decl:
+  comp_var_decl_list COLON var_type SEMICOLON
+  {
+    $$ = template("%s: %s;", $1, $3);
+  };
+
+comp_var_decl_list:
+  comp_var_name
+  | comp_var_decl_list COMMA comp_var_name
+  {
+    $$ = template("%s, %s", $1, $3);
+  };
+
+comp_var_name:
+  HASHTAG IDENTIFIER
+  {
+    $$ = template("#%s", $2);
+  };
+  | HASHTAG IDENTIFIER LBRACKET pos_integer RBRACKET
+  {
+    $$ = template("#%s[%s]", $2, $4);
   };
 
 comp_end:

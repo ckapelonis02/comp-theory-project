@@ -1,5 +1,8 @@
 c_prologue
-main_body and is it func_body?
 error handling in pos_integer
 yyerror changed
 fix union
+
+func_body (and its substances ofc)
+const expression??
+predefined functions? should I do sum with them?

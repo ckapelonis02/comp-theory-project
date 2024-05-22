@@ -106,6 +106,7 @@ STRING   ([0-9a-zA-Z\., \-\+\*\/\:\_\$\%\!\#\@\&\~\^\(\)]|\\[\\ntr\\"\\])*
 "/="               { VERBOSE_PRINT("Token DIV_ASSIGN: %s\n", yytext); return DIV_ASSIGN; }
 "%="               { VERBOSE_PRINT("Token MOD_ASSIGN: %s\n", yytext); return MOD_ASSIGN; }
 ":="               { VERBOSE_PRINT("Token COLON_ASSIGN: %s\n", yytext); return COLON_ASSIGN; }
+"#"               { VERBOSE_PRINT("Token HASHTAG: %s\n", yytext); return HASHTAG; }
 {ID}               {
               const char* repl = get_macro(yytext);
               if (repl == NULL) {
