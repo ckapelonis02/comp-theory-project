@@ -120,9 +120,16 @@ STRING   ([0-9a-zA-Z\., \-\+\*\/\:\_\$\%\!\#\@\&\~\^\(\)]|\\[\\ntr\\"\\])*
               }
             }
 {INTEGER}          {
-  VERBOSE_PRINT("Token INTEGER: %s\n", yytext);
-  yylval.str = strdup(yytext);
-  return INTEGER; }
+                      yylval.str = strdup(yytext);
+                      if (atoi(yylval.str) > 0) {
+                        VERBOSE_PRINT("Token POS_INTEGER: %s\n", yytext);
+                        return POS_INTEGER;
+                      }
+                      else {
+                        VERBOSE_PRINT("Token INTEGER: %s\n", yytext);
+                        return INTEGER;
+                      }
+}
 {FLOAT}            { VERBOSE_PRINT("Token FLOAT: %s\n", yytext); yylval.str = strdup(yytext); return FLOAT; }
 \n 					 ++lineNum;
 .                  {

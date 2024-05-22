@@ -1,6 +1,6 @@
 %{
 #include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 #include "cgen.h"
 
 extern int yylex(void);
@@ -29,9 +29,6 @@ extern int lineNum;
 %token KEYWORD_ENDWHILE 271
 %token KEYWORD_BREAK    272
 %token KEYWORD_CONTINUE 273
-%token KEYWORD_NOT      274
-%token KEYWORD_AND      275
-%token KEYWORD_OR       276
 %token KEYWORD_DEF      277
 %token KEYWORD_ENDDEF   278
 %token KEYWORD_MAIN     279
@@ -40,38 +37,49 @@ extern int lineNum;
 %token KEYWORD_ENDCOMP  282
 %token KEYWORD_OF       283
 %token KEYWORD_INTEGER  284
-%token LPAREN           285
-%token RPAREN           286
-%token COMMA            287
-%token LBRACKET         288
-%token RBRACKET         289
-%token COLON            290
-%token PERIOD           291
-%token SEMICOLON        292
-%token PLUS             293
-%token MINUS            294
-%token MULT             295
-%token DIV              296
-%token MOD              297
-%token POW              298
-%token EQ               299
-%token NEQ              300
-%token LT               301
-%token LEQ              302
-%token GT               303
-%token GEQ              304
-%token ASSIGN           305
-%token PLUS_ASSIGN      306
-%token MINUS_ASSIGN     307
-%token MULT_ASSIGN      308
-%token DIV_ASSIGN       309
-%token MOD_ASSIGN       310
-%token COLON_ASSIGN     311
+
 %token <str> IDENTIFIER       312
 %token <str> INTEGER          313
 %token <str> FLOAT            314
 %token <str> CONST_STRING     315
 %token HASHTAG                316
+%token <str> POS_INTEGER                317
+
+
+%token SEMICOLON        292
+
+%right ASSIGN           305
+%right PLUS_ASSIGN      306
+%right MINUS_ASSIGN     307
+%right COLON_ASSIGN     311
+%right MULT_ASSIGN      308
+%right DIV_ASSIGN       309
+%right MOD_ASSIGN       310
+%left KEYWORD_OR       276
+%left KEYWORD_AND      275
+%right KEYWORD_NOT      274
+%left EQ               299
+%left NEQ              300
+%left LT               301
+%left LEQ              302
+%left GT               303
+%left GEQ              304
+%left PLUS             293
+%left MINUS            294
+%left MULT             295
+%left DIV              296
+%left MOD              297
+%right POW              298
+%left LBRACKET         288
+%left RBRACKET         289
+%left PERIOD           291
+%left RPAREN           286
+%left LPAREN           285
+
+%token COMMA            287
+%token COLON            290
+
+
 
 %start input
 
@@ -122,9 +130,16 @@ extern int lineNum;
 %type<str> const_decl
 %type<str> const_expr
 
-%type<str> stmt
 %type<str> expr
-%type<str> pos_integer
+%type<str> operand
+%type<str> expr_list
+
+%type<str> stmt
+%type<str> func_call
+
+%type<str> arr_index
+%type<str> integer
+
 
 
 %%
@@ -134,7 +149,7 @@ extern int lineNum;
 *                 INPUT PROGRAM
 * */
 input:
-//  func_header { printf("%s", $1); };
+  expr { printf("%s", $1); };
 //  comp_decl_rec
 
 //  main_func
@@ -365,7 +380,7 @@ var_decl:
 
 var_name:
   IDENTIFIER
-  | IDENTIFIER LBRACKET pos_integer RBRACKET
+  | IDENTIFIER LBRACKET arr_index RBRACKET
   {
     $$ = template("%s[%s]", $1, $3);
   };
@@ -405,7 +420,7 @@ arr_dt:
   };
 
 sized_arr_dt:
-  LBRACKET pos_integer RBRACKET COLON var_type
+  LBRACKET arr_index RBRACKET COLON var_type
   {
     $$ = template("[%s]:%s", $2, $5);
   };
@@ -415,7 +430,7 @@ primitive_dt:
   {
     $$ = "scalar";
   };
-  | KEYWORD_INTEGER
+  | integer
   {
     $$ = "integer";
   };
@@ -514,7 +529,7 @@ comp_var_name:
   {
     $$ = template("#%s", $2);
   };
-  | HASHTAG IDENTIFIER LBRACKET pos_integer RBRACKET
+  | HASHTAG IDENTIFIER LBRACKET arr_index RBRACKET
   {
     $$ = template("#%s[%s]", $2, $4);
   };
@@ -545,18 +560,152 @@ comp_end:
 *                  CONST
 * */
 const_decl:
-  KEYWORD_CONST IDENTIFIER ASSIGN const_expr COLON primitive_dt SEMICOLON
+  KEYWORD_CONST IDENTIFIER ASSIGN expr COLON primitive_dt SEMICOLON
   {
     $$ = template("const %s = %s: %s;", $2, $4, $6);
   };
 
-const_expr:
+
+
+
+
+
+
+
+
+
+
+
+/*
+*                  EXPRESSIONS - OPERANDS
+* */
+expr: //conflict
+  operand
+  | expr PLUS expr
+  {
+    $$ = template("%s + %s", $1, $3);
+  };
+  | expr MINUS expr
+  {
+    $$ = template("%s - %s", $1, $3);
+  };
+  | expr MULT expr
+  {
+    $$ = template("%s * %s", $1, $3);
+  };
+  | expr DIV expr
+  {
+    $$ = template("%s / %s", $1, $3);
+  };
+  | expr MOD expr
+  {
+    $$ = template("%s", $1);
+    strcat($$, " % ");
+    strcat($$, template("%s", $3));
+  };
+  | expr GT expr
+  {
+    $$ = template("%s > %s", $1, $3);
+  };
+  | expr LT expr
+  {
+    $$ = template("%s < %s", $1, $3);
+  };
+  | expr GEQ expr
+  {
+    $$ = template("%s >= %s", $1, $3);
+  };
+  | expr LEQ expr
+  {
+    $$ = template("%s <= %s", $1, $3);
+  };
+  | expr EQ expr
+  {
+    $$ = template("%s == %s", $1, $3);
+  };
+  | expr NEQ expr
+  {
+    $$ = template("%s != %s", $1, $3);
+  };
+  | expr KEYWORD_AND expr
+  {
+    $$ = template("%s and %s", $1, $3);
+  };
+  | expr KEYWORD_OR expr
+  {
+    $$ = template("%s or %s", $1, $3);
+  };
+  | KEYWORD_NOT expr
+  {
+    $$ = template("not %s", $2);
+  };
+  | PLUS expr
+  {
+    $$ = template("+%s", $2);
+  };
+  | MINUS expr
+  {
+    $$ = template("-%s", $2);
+  };
+  | expr POW expr
+  {
+    $$ = template("%s**%s", $1, $3);
+  };
+  | LPAREN expr RPAREN
+  {
+    $$ = template("(%s)", $2);
+  };
+  | expr PERIOD expr
+  {
+    $$ = template("%s.%s", $1, $3);
+  };
+  | expr ASSIGN expr
+  {
+    $$ = template("%s = %s", $1, $3);
+  };
+  | expr PLUS_ASSIGN expr
+  {
+    $$ = template("%s += %s", $1, $3);
+  };
+  | expr MINUS_ASSIGN expr
+  {
+    $$ = template("%s -= %s", $1, $3);
+  };
+  | expr MULT_ASSIGN expr
+  {
+    $$ = template("%s *= %s", $1, $3);
+  };
+  | expr DIV_ASSIGN expr
+  {
+    $$ = template("%s /= %s", $1, $3);
+  };
+  | expr MOD_ASSIGN expr
+  {
+    $$ = template("%s %= %s", $1, $3);
+  };
+  | expr COLON_ASSIGN expr
+  {
+    $$ = template("%s := %s", $1, $3);
+  };
+
+operand:
+  var_name
+  | func_call
+  | integer
+  | FLOAT
+  | bool_dt
+  | CONST_STRING
+
+expr_list:
   %empty
   {
     $$ = "";
   };
-
-
+  | expr
+  | expr_list COMMA expr
+  {
+    $$ = template("%s, %s", $1, $3);
+  };
 
 
 
@@ -582,32 +731,34 @@ const_expr:
 
 
 /*
-*                  GENERAL
+*                  STATEMENTS
 * */
-pos_integer:
-  INTEGER
-  {
-    if (atoi($1) > 0)
-      $$ = $1;
-    else
-      exit(1);
-  };
-
 stmt:
   %empty
 {
   $$ = "";
 };
 
-expr:
-  %empty
+func_call:
+  IDENTIFIER LPAREN expr_list RPAREN
 {
-  $$ = "";
+  $$ = template("%s(%s)", $1, $3);
 };
 
 
 
 
+
+
+
+/*
+*                  GENERAL
+* */
+arr_index:
+  expr
+
+integer:
+  POS_INTEGER | INTEGER
 
 
 
