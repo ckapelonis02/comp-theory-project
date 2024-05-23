@@ -104,7 +104,6 @@ extern int lineNum;
 %type<str> func_arg_name
 %type<str> func_stmts
 %type<str> return_type
-%type<str> return_stmt
 
 %type<str> dt
 %type<str> primitive_dt
@@ -135,6 +134,16 @@ extern int lineNum;
 %type<str> expr_list
 
 %type<str> stmt
+%type<str> stmts
+%type<str> if_stmt
+%type<str> empty_stmt
+%type<str> break_stmt
+%type<str> continue_stmt
+%type<str> return_stmt
+%type<str> while_stmt
+%type<str> for_stmt
+%type<str> assign_stmt
+
 %type<str> func_call
 
 %type<str> arr_index
@@ -149,7 +158,7 @@ extern int lineNum;
 *                 INPUT PROGRAM
 * */
 input:
-  expr { printf("%s", $1); };
+  stmts { printf("%s", $1); };
 //  comp_decl_rec
 
 //  main_func
@@ -335,16 +344,6 @@ func_stmts:
 {
   $$ = "";
 };
-
-return_stmt:
-  KEYWORD_RETURN SEMICOLON
-  {
-    $$ = "return;";
-  };
-  | KEYWORD_RETURN expr SEMICOLON
-  {
-    $$ = template("return %s;", $2);
-  };
 
 func_end:
   KEYWORD_ENDDEF SEMICOLON
@@ -733,11 +732,89 @@ expr_list:
 /*
 *                  STATEMENTS
 * */
+stmts:
+  stmt
+  {
+    $$ = template("%s", $1);
+  };
+  | stmts stmt
+  {
+    $$ = template("%s%s", $1, $2);
+  };
+
 stmt:
-  %empty
-{
-  $$ = "";
-};
+  empty_stmt
+  | if_stmt
+  | func_call SEMICOLON
+  {
+    $$ = template("%s;\n", $1);
+  };
+  | return_stmt
+  | break_stmt
+  | continue_stmt
+  | while_stmt
+  | for_stmt
+  | assign_stmt
+
+for_stmt:
+   KEYWORD_FOR var_name KEYWORD_IN LBRACKET expr COLON expr COLON expr RBRACKET COLON stmts KEYWORD_ENDFOR SEMICOLON
+  {
+    $$ = template("for %s in [%s : %s : %s]:\n%sendfor;\n", $2, $5, $7, $9, $12);
+  };
+  | KEYWORD_FOR var_name KEYWORD_IN LBRACKET expr COLON expr RBRACKET COLON stmts KEYWORD_ENDFOR SEMICOLON
+  {
+    $$ = template("for %s in [%s : %s]:\n%sendfor;\n", $2, $5, $7, $10);
+  };
+
+while_stmt:
+  KEYWORD_WHILE LPAREN expr RPAREN COLON stmts KEYWORD_ENDWHILE SEMICOLON
+  {
+    $$ = template("while (%s):\n%sendwhile;\n", $3, $6);
+  };
+
+assign_stmt:
+  var_name ASSIGN expr SEMICOLON
+  {
+    $$ = template("%s = %s;\n", $1, $3);
+  };
+
+return_stmt:
+  KEYWORD_RETURN SEMICOLON
+  {
+    $$ = "return;\n";
+  };
+  | KEYWORD_RETURN expr SEMICOLON
+  {
+    $$ = template("return %s;\n", $2);
+  };
+
+break_stmt:
+  KEYWORD_BREAK SEMICOLON
+  {
+    $$ = "break;\n";
+  };
+
+continue_stmt:
+  KEYWORD_CONTINUE SEMICOLON
+  {
+    $$ = "continue;\n";
+  };
+
+empty_stmt:
+  SEMICOLON
+  {
+    $$ = ";\n";
+  };
+
+if_stmt:
+  KEYWORD_IF LPAREN expr RPAREN COLON stmts KEYWORD_ENDIF SEMICOLON
+  {
+    $$ = template("if (%s):\n%sendif;\n", $3, $6);
+  };
+  | KEYWORD_IF LPAREN expr RPAREN COLON stmts KEYWORD_ELSE COLON stmts KEYWORD_ENDIF SEMICOLON
+  {
+    $$ = template("if (%s):\n%selse:\n%sendif;\n", $3, $6, $9);
+  };
 
 func_call:
   IDENTIFIER LPAREN expr_list RPAREN

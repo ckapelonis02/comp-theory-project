@@ -1,0 +1,29 @@
+if (var == True):
+  print("Correct!");
+  if (x >= 4): break; endif;
+  x = 18;
+  return;
+else:
+  func(21, x);
+  if (x <= 4): continue; endif;
+  x = 18-func(3);
+  y = 6;
+  while (y < 4 and y-=1 > 5):
+    ;
+  endwhile;
+  return x+3/func(23, x);
+endif;
+
+for i in [4: 1: 110-34]:
+  print(x);
+endfor;
+
+for i in [4:110-34]:
+  print(x);
+endfor;
+
+
+
+
+
+
