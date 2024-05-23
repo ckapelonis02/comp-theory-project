@@ -43,7 +43,6 @@ extern int lineNum;
 %token <str> FLOAT            314
 %token <str> CONST_STRING     315
 %token HASHTAG                316
-%token <str> POS_INTEGER                317
 
 
 %token SEMICOLON        292
@@ -143,11 +142,12 @@ extern int lineNum;
 %type<str> while_stmt
 %type<str> for_stmt
 %type<str> assign_stmt
+%type<str> range_comprehension
+%type<str> arr_comprehension
 
 %type<str> func_call
 
 %type<str> arr_index
-%type<str> integer
 
 
 
@@ -429,7 +429,7 @@ primitive_dt:
   {
     $$ = "scalar";
   };
-  | integer
+  | KEYWORD_INTEGER
   {
     $$ = "integer";
   };
@@ -690,7 +690,7 @@ expr: //conflict
 operand:
   var_name
   | func_call
-  | integer
+  | INTEGER
   | FLOAT
   | bool_dt
   | CONST_STRING
@@ -755,6 +755,20 @@ stmt:
   | while_stmt
   | for_stmt
   | assign_stmt
+  | range_comprehension
+  | arr_comprehension
+
+range_comprehension:
+  var_name COLON_ASSIGN LBRACKET expr KEYWORD_FOR var_name COLON INTEGER RBRACKET COLON var_type SEMICOLON
+  {
+    $$ = template("%s := [%s for %s:%s] : %s;\n", $1, $4, $6, $8, $11);
+  };
+
+arr_comprehension:
+  var_name COLON_ASSIGN LBRACKET expr KEYWORD_FOR var_name COLON var_type KEYWORD_IN var_name KEYWORD_OF INTEGER RBRACKET COLON var_type SEMICOLON
+  {
+    $$ = template("%s := [%s for %s: %s in %s of %s] : %s;\n", $1, $4, $6, $8, $10, $12, $15);
+  };
 
 for_stmt:
    KEYWORD_FOR var_name KEYWORD_IN LBRACKET expr COLON expr COLON expr RBRACKET COLON stmts KEYWORD_ENDFOR SEMICOLON
@@ -833,9 +847,6 @@ func_call:
 * */
 arr_index:
   expr
-
-integer:
-  POS_INTEGER | INTEGER
 
 
 

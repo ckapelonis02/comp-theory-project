@@ -23,7 +23,6 @@ for i in [4:110-34]:
 endfor;
 
 
+half := [ x / 2 for x:100] : scalar;
 
-
-
-
+return 4;
