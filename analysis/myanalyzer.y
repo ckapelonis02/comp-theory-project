@@ -101,7 +101,6 @@ extern int lineNum;
 %type<str> func_arg
 %type<str> func_declarations
 %type<str> func_arg_name
-%type<str> func_stmts
 %type<str> return_type
 
 %type<str> dt
@@ -126,7 +125,6 @@ extern int lineNum;
 %type<str> comp_func_decl_rec
 
 %type<str> const_decl
-%type<str> const_expr
 
 %type<str> expr
 %type<str> operand
@@ -158,9 +156,6 @@ extern int lineNum;
 *                 INPUT PROGRAM
 * */
 input:
-  stmts { printf("%s", $1); };
-//  comp_decl_rec
-
 //  main_func
 //  | func_decl_rec input
 //  | var_decl_rec input
@@ -316,34 +311,17 @@ func_arg_name:
 func_arg_type:
   var_type
 
-//func_body:
-//  func_stmts
-//  | func_declarations func_body
-//  {
-//    $$ = template("%s\n\n%s", $1, $2);
-//  };
-//  | func_body return_stmt
-//  {
-//    $$ = template("%s\n\n%s", $1, $2);
-//  };
-
 func_body:
-  %empty
-{
-  $$ = "";
-};
+  func_declarations stmts
+  {
+    $$ = template("%s\n\n%s", $1, $2);
+  };
 
 func_declarations:
   %empty
-{
-  $$ = "";
-};
-
-func_stmts:
-  %empty
-{
-  $$ = "";
-};
+  {
+    $$ = "";
+  }
 
 func_end:
   KEYWORD_ENDDEF SEMICOLON
