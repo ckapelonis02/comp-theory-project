@@ -99,14 +99,13 @@ extern int lineNum;
 %type<str> func_param_list
 %type<str> func_arg_type
 %type<str> func_arg
-%type<str> func_declarations
 %type<str> func_arg_name
 %type<str> return_type
 
-%type<str> dt
+//%type<str> dt
 %type<str> primitive_dt
-%type<str> sized_arr_dt
-%type<str> arr_dt
+//%type<str> sized_arr_dt
+//%type<str> arr_dt
 %type<str> bool_dt
 
 %type<str> var_decl_list
@@ -147,8 +146,6 @@ extern int lineNum;
 
 %type<str> arr_index
 
-
-
 %%
 
 
@@ -156,11 +153,15 @@ extern int lineNum;
 *                 INPUT PROGRAM
 * */
 input:
-//  main_func
-//  | func_decl_rec input
-//  | var_decl_rec input
-//  | const_decl_rec input
-//  | comp_decl_rec input
+  comp_decl_rec
+  const_decl_rec
+  var_decl_rec
+  func_decl_rec
+  main_func
+  {
+    printf("%s", c_prologue);
+    printf("%s%s%s%s%s", $1, $2, $3, $4, $5);
+  };
 
 
 
@@ -178,45 +179,44 @@ input:
 /*
 *                 RECURSIVE BASIC COMPONENTS
 * */
-
 func_decl_rec:
-  func_decl
+  %empty
   {
-    printf("%s\n", $1);
+    $$ = "";
   };
   | func_decl_rec func_decl
   {
-    printf("%s\n", $2);
+    $$ = template("%s\n%s\n", $1, $2);
   };
 
 var_decl_rec:
-  var_decl
+  %empty
   {
-    printf("%s\n", $1);
+    $$ = "";
   };
   | var_decl_rec var_decl
   {
-    printf("%s\n", $2);
+    $$ = template("%s\n%s\n", $1, $2);
   };
 
 const_decl_rec:
-  const_decl
+  %empty
   {
-    printf("%s\n", $1);
+    $$ = "";
   };
   | const_decl_rec const_decl
   {
-    printf("%s\n", $2);
+    $$ = template("%s\n%s\n", $1, $2);
   };
 
 comp_decl_rec:
-  comp_decl
+  %empty
   {
-    printf("%s\n", $1);
+    $$ = "";
   };
   | comp_decl_rec comp_decl
   {
-    printf("%s\n", $2);
+    $$ = template("%s\n%s\n", $1, $2);
   };
 
 
@@ -233,9 +233,9 @@ comp_decl_rec:
 * */
 
 main_func:
-  main_header main_body func_end
+  main_header main_body main_end
   {
-    printf("%s %s %s", $1, $2, $3);
+    $$ = template("%s %s %s", $1, $2, $3);
   };
 
 main_header:
@@ -312,16 +312,10 @@ func_arg_type:
   var_type
 
 func_body:
-  func_declarations stmts
+  const_decl_rec var_decl_rec stmts
   {
-    $$ = template("%s\n\n%s", $1, $2);
+    $$ = template("%s%s%s", $1, $2, $3);
   };
-
-func_declarations:
-  %empty
-  {
-    $$ = "";
-  }
 
 func_end:
   KEYWORD_ENDDEF SEMICOLON
@@ -381,26 +375,26 @@ var_type:
 /*
 *                  DATA TYPES
 * */
-dt:
-  primitive_dt
-  | KEYWORD_COMP
-  {
-    $$ = "comp";
-  };
-  | sized_arr_dt
-  | arr_dt
+//dt:
+//  primitive_dt
+//  | KEYWORD_COMP
+//  {
+//    $$ = "comp";
+//  };
+//  | sized_arr_dt
+//  | arr_dt
+//
+//arr_dt:
+//  LBRACKET RBRACKET COLON var_type
+//  {
+//    $$ = template("[]:%s", $4);
+//  };
 
-arr_dt:
-  LBRACKET RBRACKET COLON var_type
-  {
-    $$ = template("[]:%s", $4);
-  };
-
-sized_arr_dt:
-  LBRACKET arr_index RBRACKET COLON var_type
-  {
-    $$ = template("[%s]:%s", $2, $5);
-  };
+//sized_arr_dt:
+//  LBRACKET arr_index RBRACKET COLON var_type
+//  {
+//    $$ = template("[%s]:%s", $2, $5);
+//  };
 
 primitive_dt:
   KEYWORD_SCALAR

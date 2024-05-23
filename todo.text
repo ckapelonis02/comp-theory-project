@@ -1,6 +1,4 @@
-c_prologue
 yyerror changed
 fix union
 
-func_body (and its substances ofc)
 predefined functions? should I do sum with them?
