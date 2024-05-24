@@ -5,49 +5,11 @@
 #include "cgen.h"
 
 extern int yylex(void);
+extern char* replaceWord(const char* s, const char* oldW, const char* newW);
 extern int lineNum;
 int next_avail = 0;
 char* comp_func_names[100];
 char* comp_func_headers[100];
-
-
-char* replaceWord(const char* s, const char* oldW,
-                const char* newW)
-        {
-          char* result;
-          int i, cnt = 0;
-          int newWlen = strlen(newW);
-          int oldWlen = strlen(oldW);
-
-          // Counting the number of times old word
-          // occur in the string
-          for (i = 0; s[i] != '\0'; i++) {
-            if (strstr(&s[i], oldW) == &s[i]) {
-              cnt++;
-
-              // Jumping to index after the old word.
-              i += oldWlen - 1;
-            }
-          }
-
-          // Making new string of enough length
-          result = (char*)malloc(i + cnt * (newWlen - oldWlen) + 1);
-
-          i = 0;
-          while (*s) {
-            // compare the substring with the result
-            if (strstr(s, oldW) == s) {
-              strcpy(&result[i], newW);
-              i += newWlen;
-              s += oldWlen;
-            }
-            else
-              result[i++] = *s++;
-          }
-
-          result[i] = '\0';
-          return result;
-        }
 
 %}
 
@@ -132,18 +94,14 @@ char* replaceWord(const char* s, const char* oldW,
 
 %type<str> main_func
 %type<str> main_header
-%type<str> main_body
-%type<str> main_end
 
 %type<str> func_decl
 %type<str> func_header
 %type<str> func_body
 %type<str> func_end
 %type<str> func_param_list
-%type<str> func_arg_type
 %type<str> func_arg
 %type<str> func_arg_name
-%type<str> return_type
 
 %type<str> primitive_dt
 %type<str> bool_dt
@@ -181,10 +139,7 @@ char* replaceWord(const char* s, const char* oldW,
 %type<str> assign_stmt
 %type<str> range_comprehension
 %type<str> arr_comprehension
-
 %type<str> func_call
-
-%type<str> arr_index
 
 %%
 
@@ -260,20 +215,12 @@ comp_decl_rec:
   };
 
 
-
-
-
-
-
-
-
-
 /*
 *                  MAIN FUNCTION
 * */
 
 main_func:
-  main_header main_body main_end
+  main_header func_body func_end
   {
     $$ = template("%s%s%s", $1, $2, $3);
   };
@@ -283,22 +230,6 @@ main_header:
   {
     $$ = "int main() {\n";
   };
-
-main_body:
-  func_body
-
-main_end:
-  func_end
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -316,13 +247,10 @@ func_header:
   {
     $$ = template("void %s(%s) {\n", $2, $4);
   };
-  | KEYWORD_DEF IDENTIFIER LPAREN func_param_list RPAREN MINUS GT return_type COLON
+  | KEYWORD_DEF IDENTIFIER LPAREN func_param_list RPAREN MINUS GT var_type COLON
   {
     $$ = template("%s %s(%s) {\n", $8, $2, $4);
   };
-
-return_type:
-  var_type
 
 func_param_list:
   %empty
@@ -336,7 +264,7 @@ func_param_list:
   };
 
 func_arg:
-  func_arg_name COLON func_arg_type
+  func_arg_name COLON var_type
   {
     $$ = template("%s %s", $3, $1);
   };
@@ -348,17 +276,10 @@ func_arg_name:
     $$ = template("%s[]", $1);
   };
 
-func_arg_type:
-  var_type
-
 func_body:
   const_decl_rec var_decl_rec stmts
   {
     $$ = template("%s%s%s", $1, $2, $3);
-  };
-  | const_decl_rec var_decl_rec
-  {
-    $$ = template("%s%s", $1, $2);
   };
 
 func_end:
@@ -366,14 +287,6 @@ func_end:
   {
     $$ = "}\n";
   };
-
-
-
-
-
-
-
-
 
 
 
@@ -395,40 +308,13 @@ var_decl_list:
 
 var_name:
   IDENTIFIER
-  | var_name PERIOD var_name
-  {
-    $$ = template("%s.%s", $1, $3);
-  };
-  | IDENTIFIER LBRACKET arr_index RBRACKET
+  | IDENTIFIER LBRACKET expr RBRACKET
   {
     $$ = template("%s[%s]", $1, $3);
   };
-  | HASHTAG IDENTIFIER
-  {
-    $$ = template("#%s", $2);
-  };
-//  | HASHTAG var_name PERIOD var_name
-//  {
-//    $$ = template("%s.%s", $2, $4);
-//  };
-  | HASHTAG IDENTIFIER LBRACKET arr_index RBRACKET
-  {
-    $$ = template("#%s[%s]", $2, $4);
-  };
 
 var_type:
-  primitive_dt
-  | IDENTIFIER
-
-
-
-
-
-
-
-
-
-
+  primitive_dt | IDENTIFIER
 
 
 
@@ -462,15 +348,6 @@ bool_dt:
   {
     $$ = "0";
   };
-
-
-
-
-
-
-
-
-
 
 
 
@@ -532,7 +409,7 @@ comp_func_header:
     comp_func_headers[next_avail] = template("void (*%s) (SELF%s);\n", $2, $4);
     next_avail++;
   };
-  | KEYWORD_DEF IDENTIFIER LPAREN comp_func_param_list RPAREN MINUS GT return_type COLON
+  | KEYWORD_DEF IDENTIFIER LPAREN comp_func_param_list RPAREN MINUS GT var_type COLON
   {
     $$ = template("%s %s(SELF%s) {\n", $8, $2, $4);
     comp_func_names[next_avail] = $2;
@@ -578,28 +455,10 @@ comp_var_decl_list:
   };
 
 comp_var_name:
-  HASHTAG IDENTIFIER
+  HASHTAG var_name
   {
     $$ = template("%s", $2);
   };
-  | HASHTAG IDENTIFIER LBRACKET arr_index RBRACKET
-  {
-    $$ = template("%s[%s]", $2, $4);
-  };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -611,14 +470,6 @@ const_decl:
   {
     $$ = template("const %s %s = %s;", $6, $2, $4);
   };
-
-
-
-
-
-
-
-
 
 
 
@@ -706,34 +557,6 @@ expr:
 //  {
 //    $$ = template("%s.%s", $1, $3);
 //  };
-  | expr ASSIGN expr
-  {
-    $$ = template("%s = %s", $1, $3);
-  };
-  | expr PLUS_ASSIGN expr
-  {
-    $$ = template("%s += %s", $1, $3);
-  };
-  | expr MINUS_ASSIGN expr
-  {
-    $$ = template("%s -= %s", $1, $3);
-  };
-  | expr MULT_ASSIGN expr
-  {
-    $$ = template("%s *= %s", $1, $3);
-  };
-  | expr DIV_ASSIGN expr
-  {
-    $$ = template("%s /= %s", $1, $3);
-  };
-  | expr MOD_ASSIGN expr
-  {
-    $$ = template("%s %= %s", $1, $3);
-  };
-  | expr COLON_ASSIGN expr
-  {
-    $$ = template("%s := %s", $1, $3);
-  };
 
 operand:
   var_name
@@ -752,38 +575,10 @@ expr_list:
     $$ = "";
   };
   | expr
-  | var_name PERIOD func_call
-  {
-    $$ = template("%s.%s", $1, $3);
-  };
   | expr_list COMMA expr
   {
     $$ = template("%s, %s", $1, $3);
   };
-  | expr_list COMMA var_name PERIOD func_call
-  {
-    $$ = template("%s, %s.%s", $1, $3, $5);
-  };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -804,10 +599,6 @@ stmts:
 stmt:
   empty_stmt
   | if_stmt
-  | var_name PERIOD func_call SEMICOLON
-  {
-    $$ = template("%s.%s;\n", $1, $3);
-  };
   | func_call SEMICOLON
   {
     $$ = template("%s;\n", $1);
@@ -941,28 +732,6 @@ func_call:
 {
   $$ = template("%s(%s)", $1, $3);
 };
-
-
-
-
-
-
-
-/*
-*                  GENERAL
-* */
-arr_index:
-  expr
-
-
-
-
-
-
-
-
-
-
 
 
 
