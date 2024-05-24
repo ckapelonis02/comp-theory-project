@@ -6,6 +6,10 @@
 
 extern int yylex(void);
 extern int lineNum;
+int next_avail = 0;
+char* comp_func_names[100];
+char* comp_func_headers[100];
+
 
 char* replaceWord(const char* s, const char* oldW,
                 const char* newW)
@@ -150,14 +154,14 @@ char* replaceWord(const char* s, const char* oldW,
 %type<str> var_type
 
 %type<str> comp_decl
-%type<str> comp_header
-%type<str> comp_body
-%type<str> comp_end
 %type<str> comp_var_decl_rec
 %type<str> comp_var_decl
 %type<str> comp_var_decl_list
 %type<str> comp_var_name
 %type<str> comp_func_decl_rec
+%type<str> comp_func_decl
+%type<str> comp_func_header
+%type<str> comp_func_param_list
 
 %type<str> const_decl
 
@@ -310,7 +314,7 @@ func_decl:
 func_header:
   KEYWORD_DEF IDENTIFIER LPAREN func_param_list RPAREN COLON
   {
-    $$ = template("int %s(%s) {\n", $2, $4);
+    $$ = template("void %s(%s) {\n", $2, $4);
   };
   | KEYWORD_DEF IDENTIFIER LPAREN func_param_list RPAREN MINUS GT return_type COLON
   {
@@ -352,6 +356,10 @@ func_body:
   {
     $$ = template("%s%s%s", $1, $2, $3);
   };
+  | const_decl_rec var_decl_rec
+  {
+    $$ = template("%s%s", $1, $2);
+  };
 
 func_end:
   KEYWORD_ENDDEF SEMICOLON
@@ -387,9 +395,25 @@ var_decl_list:
 
 var_name:
   IDENTIFIER
+  | var_name PERIOD var_name
+  {
+    $$ = template("%s.%s", $1, $3);
+  };
   | IDENTIFIER LBRACKET arr_index RBRACKET
   {
     $$ = template("%s[%s]", $1, $3);
+  };
+  | HASHTAG IDENTIFIER
+  {
+    $$ = template("#%s", $2);
+  };
+//  | HASHTAG var_name PERIOD var_name
+//  {
+//    $$ = template("%s.%s", $2, $4);
+//  };
+  | HASHTAG IDENTIFIER LBRACKET arr_index RBRACKET
+  {
+    $$ = template("#%s[%s]", $2, $4);
   };
 
 var_type:
@@ -450,41 +474,84 @@ bool_dt:
 
 
 
-
-
 /*
 *                  COMP TYPE
 * */
 comp_decl:
-  comp_header comp_body comp_end
-  {
-    $$ = template("%s\n%s\n%s", $1, $2, $3);
-  };
-
-comp_header:
   KEYWORD_COMP IDENTIFIER COLON
+  comp_var_decl_rec
+  comp_func_decl_rec
+  KEYWORD_ENDCOMP SEMICOLON
   {
-    $$ = template("comp %s:", $2);
+    char* type_name = $2;
+    char* vars = $4;
+    char* funcs = $5;
+    $$ = template("#define SELF struct %s *self\n", type_name);
+    strcat($$, template("typedef struct %s {\n", type_name));
+    strcat($$, template("%s\n", vars));
+
+    if (next_avail > 0) {
+      for (int i = 0; i < next_avail; i++) {
+        strcat($$, template("%s\n", comp_func_headers[i]));
+      }
+      strcat($$, template("} %s;\n", type_name));
+      strcat($$, template("%s\n", funcs));
+      strcat($$, template("%s ctor_%s = {", type_name, type_name));
+      for (int i = 0; i < next_avail; i++) {
+        strcat($$, template(".%s = %s", comp_func_names[i], comp_func_names[i]));
+        if (i == next_avail-1) break;
+        strcat($$, ", ");
+      }
+      strcat($$, template("};", type_name, type_name));
+    }
+    strcat($$, "\n#undef SELF\n");
+    next_avail = 0;
   };
 
-comp_body:
-  comp_var_decl_rec
+comp_func_decl_rec:
+  %empty
   {
-    $$ = template("%s", $1);
+    $$ = "";
   };
-  | comp_var_decl_rec comp_func_decl_rec
+  | comp_func_decl_rec comp_func_decl
   {
     $$ = template("%s\n%s\n", $1, $2);
   };
 
-comp_func_decl_rec:
-  func_decl
+comp_func_decl:
+  comp_func_header func_body func_end
   {
-    $$ = template("%s\n", $1);
+    $$ = template("%s%s%s", $1, $2, $3);
   };
-  | comp_func_decl_rec func_decl
+
+comp_func_header:
+  KEYWORD_DEF IDENTIFIER LPAREN comp_func_param_list RPAREN COLON
   {
-    $$ = template("%s%s\n", $$, $2);
+    $$ = template("void %s(SELF%s) {\n", $2, $4);
+    comp_func_names[next_avail] = $2;
+    comp_func_headers[next_avail] = template("void (*%s) (SELF%s);\n", $2, $4);
+    next_avail++;
+  };
+  | KEYWORD_DEF IDENTIFIER LPAREN comp_func_param_list RPAREN MINUS GT return_type COLON
+  {
+    $$ = template("%s %s(SELF%s) {\n", $8, $2, $4);
+    comp_func_names[next_avail] = $2;
+    comp_func_headers[next_avail] = template("%s (*%s) (SELF%s);\n", $8, $2, $4);
+    next_avail++;
+  };
+
+comp_func_param_list:
+  %empty
+  {
+    $$ = "";
+  };
+  | func_arg
+  {
+    $$ = template(", %s", $1);
+  };
+  | comp_func_param_list COMMA func_arg
+  {
+    $$ = template("%s, %s", $1, $3);
   };
 
 comp_var_decl_rec:
@@ -513,17 +580,11 @@ comp_var_decl_list:
 comp_var_name:
   HASHTAG IDENTIFIER
   {
-    $$ = template("#%s", $2);
+    $$ = template("%s", $2);
   };
   | HASHTAG IDENTIFIER LBRACKET arr_index RBRACKET
   {
-    $$ = template("#%s[%s]", $2, $4);
-  };
-
-comp_end:
-  KEYWORD_ENDCOMP SEMICOLON
-  {
-    $$ = "endcomp;";
+    $$ = template("%s[%s]", $2, $4);
   };
 
 
@@ -565,7 +626,7 @@ const_decl:
 /*
 *                  EXPRESSIONS - OPERANDS
 * */
-expr: //conflict
+expr:
   operand
   | expr PLUS expr
   {
@@ -641,10 +702,10 @@ expr: //conflict
   {
     $$ = template("(%s)", $2);
   };
-  | expr PERIOD expr
-  {
-    $$ = template("%s.%s", $1, $3);
-  };
+//  | expr PERIOD expr
+//  {
+//    $$ = template("%s.%s", $1, $3);
+//  };
   | expr ASSIGN expr
   {
     $$ = template("%s = %s", $1, $3);
@@ -691,9 +752,17 @@ expr_list:
     $$ = "";
   };
   | expr
+  | var_name PERIOD func_call
+  {
+    $$ = template("%s.%s", $1, $3);
+  };
   | expr_list COMMA expr
   {
     $$ = template("%s, %s", $1, $3);
+  };
+  | expr_list COMMA var_name PERIOD func_call
+  {
+    $$ = template("%s, %s.%s", $1, $3, $5);
   };
 
 
@@ -735,6 +804,10 @@ stmts:
 stmt:
   empty_stmt
   | if_stmt
+  | var_name PERIOD func_call SEMICOLON
+  {
+    $$ = template("%s.%s;\n", $1, $3);
+  };
   | func_call SEMICOLON
   {
     $$ = template("%s;\n", $1);
@@ -799,6 +872,30 @@ assign_stmt:
   var_name ASSIGN expr SEMICOLON
   {
     $$ = template("%s = %s;\n", $1, $3);
+  }
+  | var_name PLUS_ASSIGN expr SEMICOLON
+  {
+    $$ = template("%s += %s;\n", $1, $3);
+  }
+  | var_name MINUS_ASSIGN expr SEMICOLON
+  {
+    $$ = template("%s -= %s;\n", $1, $3);
+  }
+  | var_name MULT_ASSIGN expr SEMICOLON
+  {
+    $$ = template("%s *= %s;\n", $1, $3);
+  }
+  | var_name DIV_ASSIGN expr SEMICOLON
+  {
+    $$ = template("%s /= %s;\n", $1, $3);
+  }
+  | var_name MOD_ASSIGN expr SEMICOLON
+  {
+    $$ = template("%s %%= %s;\n", $1, $3);
+  }
+  | var_name COLON_ASSIGN expr SEMICOLON
+  {
+    $$ = template("%s := %s;\n", $1, $3);
   };
 
 return_stmt:
