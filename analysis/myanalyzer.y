@@ -102,10 +102,7 @@ extern int lineNum;
 %type<str> func_arg_name
 %type<str> return_type
 
-//%type<str> dt
 %type<str> primitive_dt
-//%type<str> sized_arr_dt
-//%type<str> arr_dt
 %type<str> bool_dt
 
 %type<str> var_decl_list
@@ -235,13 +232,13 @@ comp_decl_rec:
 main_func:
   main_header main_body main_end
   {
-    $$ = template("%s %s %s", $1, $2, $3);
+    $$ = template("%s%s%s", $1, $2, $3);
   };
 
 main_header:
   KEYWORD_DEF KEYWORD_MAIN LPAREN RPAREN COLON
   {
-    $$ = "def main():\n";
+    $$ = "int main() {\n";
   };
 
 main_body:
@@ -274,11 +271,11 @@ func_decl:
 func_header:
   KEYWORD_DEF IDENTIFIER LPAREN func_param_list RPAREN COLON
   {
-    $$ = template("def %s(%s):\n", $2, $4);
+    $$ = template("int %s(%s) {\n", $2, $4);
   };
   | KEYWORD_DEF IDENTIFIER LPAREN func_param_list RPAREN MINUS GT return_type COLON
   {
-    $$ = template("def %s(%s) -> %s:\n", $2, $4, $8);
+    $$ = template("%s %s(%s) {\n", $8, $2, $4);
   };
 
 return_type:
@@ -298,7 +295,7 @@ func_param_list:
 func_arg:
   func_arg_name COLON func_arg_type
   {
-    $$ = template("%s: %s", $1, $3);
+    $$ = template("%s %s", $3, $1);
   };
 
 func_arg_name:
@@ -320,7 +317,7 @@ func_body:
 func_end:
   KEYWORD_ENDDEF SEMICOLON
   {
-    $$ = "enddef;\n";
+    $$ = "}\n";
   };
 
 
@@ -336,17 +333,17 @@ func_end:
 /*
 *                  VARIABLES
 * */
+var_decl:
+  var_decl_list COLON var_type SEMICOLON
+  {
+    $$ = template("%s %s;", $3, $1);
+  };
+
 var_decl_list:
   var_name
   | var_decl_list COMMA var_name
   {
     $$ = template("%s, %s", $1, $3);
-  };
-
-var_decl:
-  var_decl_list COLON var_type SEMICOLON
-  {
-    $$ = template("%s: %s;", $1, $3);
   };
 
 var_name:
@@ -375,53 +372,32 @@ var_type:
 /*
 *                  DATA TYPES
 * */
-//dt:
-//  primitive_dt
-//  | KEYWORD_COMP
-//  {
-//    $$ = "comp";
-//  };
-//  | sized_arr_dt
-//  | arr_dt
-//
-//arr_dt:
-//  LBRACKET RBRACKET COLON var_type
-//  {
-//    $$ = template("[]:%s", $4);
-//  };
-
-//sized_arr_dt:
-//  LBRACKET arr_index RBRACKET COLON var_type
-//  {
-//    $$ = template("[%s]:%s", $2, $5);
-//  };
-
 primitive_dt:
   KEYWORD_SCALAR
   {
-    $$ = "scalar";
+    $$ = "double";
   };
   | KEYWORD_INTEGER
   {
-    $$ = "integer";
+    $$ = "int";
   };
   | KEYWORD_STR
   {
-    $$ = "str";
+    $$ = "char*";
   };
   | KEYWORD_BOOL
   {
-    $$ = "bool";
+    $$ = "int";
   };
 
 bool_dt:
   KEYWORD_TRUE
   {
-    $$ = "True";
+    $$ = "1";
   };
   | KEYWORD_FALSE
   {
-    $$ = "False";
+    $$ = "0";
   };
 
 
@@ -485,7 +461,7 @@ comp_var_decl_rec:
 comp_var_decl:
   comp_var_decl_list COLON var_type SEMICOLON
   {
-    $$ = template("%s: %s;", $1, $3);
+    $$ = template("%s %s;", $3, $1);
   };
 
 comp_var_decl_list:
@@ -533,7 +509,7 @@ comp_end:
 const_decl:
   KEYWORD_CONST IDENTIFIER ASSIGN expr COLON primitive_dt SEMICOLON
   {
-    $$ = template("const %s = %s: %s;", $2, $4, $6);
+    $$ = template("const %s %s = %s;", $6, $2, $4);
   };
 
 
@@ -600,15 +576,15 @@ expr: //conflict
   };
   | expr KEYWORD_AND expr
   {
-    $$ = template("%s and %s", $1, $3);
+    $$ = template("%s && %s", $1, $3);
   };
   | expr KEYWORD_OR expr
   {
-    $$ = template("%s or %s", $1, $3);
+    $$ = template("%s || %s", $1, $3);
   };
   | KEYWORD_NOT expr
   {
-    $$ = template("not %s", $2);
+    $$ = template("! %s", $2);
   };
   | PLUS expr
   {
@@ -620,7 +596,7 @@ expr: //conflict
   };
   | expr POW expr
   {
-    $$ = template("%s**%s", $1, $3);
+    $$ = template("pow(%s, %s)", $1, $3);
   };
   | LPAREN expr RPAREN
   {
@@ -666,6 +642,9 @@ operand:
   | FLOAT
   | bool_dt
   | CONST_STRING
+  {
+    $$ = template("\"%s\"", $1);
+  };
 
 expr_list:
   %empty
@@ -745,17 +724,17 @@ arr_comprehension:
 for_stmt:
    KEYWORD_FOR var_name KEYWORD_IN LBRACKET expr COLON expr COLON expr RBRACKET COLON stmts KEYWORD_ENDFOR SEMICOLON
   {
-    $$ = template("for %s in [%s : %s : %s]:\n%sendfor;\n", $2, $5, $7, $9, $12);
+    $$ = template("for (int %s = %s; %s < %s; %s += %s) {\n%s}\n", $2, $5, $2, $7, $2, $9, $12);
   };
   | KEYWORD_FOR var_name KEYWORD_IN LBRACKET expr COLON expr RBRACKET COLON stmts KEYWORD_ENDFOR SEMICOLON
   {
-    $$ = template("for %s in [%s : %s]:\n%sendfor;\n", $2, $5, $7, $10);
+    $$ = template("for (int %s = %s; %s < %s; %s++) {\n%s}\n", $2, $5, $2, $7, $2, $10);
   };
 
 while_stmt:
   KEYWORD_WHILE LPAREN expr RPAREN COLON stmts KEYWORD_ENDWHILE SEMICOLON
   {
-    $$ = template("while (%s):\n%sendwhile;\n", $3, $6);
+    $$ = template("while (%s) {\n%s}\n", $3, $6);
   };
 
 assign_stmt:
@@ -795,11 +774,11 @@ empty_stmt:
 if_stmt:
   KEYWORD_IF LPAREN expr RPAREN COLON stmts KEYWORD_ENDIF SEMICOLON
   {
-    $$ = template("if (%s):\n%sendif;\n", $3, $6);
+    $$ = template("if (%s) {\n%s}\n", $3, $6);
   };
   | KEYWORD_IF LPAREN expr RPAREN COLON stmts KEYWORD_ELSE COLON stmts KEYWORD_ENDIF SEMICOLON
   {
-    $$ = template("if (%s):\n%selse:\n%sendif;\n", $3, $6, $9);
+    $$ = template("if (%s) {\n%s}\nelse {\n%s}\n", $3, $6, $9);
   };
 
 func_call:
