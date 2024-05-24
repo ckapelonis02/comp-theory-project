@@ -1,10 +1,49 @@
 %{
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "cgen.h"
 
 extern int yylex(void);
 extern int lineNum;
+
+char* replaceWord(const char* s, const char* oldW,
+                const char* newW)
+        {
+          char* result;
+          int i, cnt = 0;
+          int newWlen = strlen(newW);
+          int oldWlen = strlen(oldW);
+
+          // Counting the number of times old word
+          // occur in the string
+          for (i = 0; s[i] != '\0'; i++) {
+            if (strstr(&s[i], oldW) == &s[i]) {
+              cnt++;
+
+              // Jumping to index after the old word.
+              i += oldWlen - 1;
+            }
+          }
+
+          // Making new string of enough length
+          result = (char*)malloc(i + cnt * (newWlen - oldWlen) + 1);
+
+          i = 0;
+          while (*s) {
+            // compare the substring with the result
+            if (strstr(s, oldW) == s) {
+              strcpy(&result[i], newW);
+              i += newWlen;
+              s += oldWlen;
+            }
+            else
+              result[i++] = *s++;
+          }
+
+          result[i] = '\0';
+          return result;
+        }
 
 %}
 
@@ -156,8 +195,8 @@ input:
   func_decl_rec
   main_func
   {
-    printf("%s", c_prologue);
-    printf("%s%s%s%s%s", $1, $2, $3, $4, $5);
+    puts(template("%s", c_prologue));
+    puts(template("%s%s%s%s%s", $1, $2, $3, $4, $5));
   };
 
 
@@ -712,13 +751,32 @@ stmt:
 range_comprehension:
   var_name COLON_ASSIGN LBRACKET expr KEYWORD_FOR var_name COLON INTEGER RBRACKET COLON var_type SEMICOLON
   {
-    $$ = template("%s := [%s for %s:%s] : %s;\n", $1, $4, $6, $8, $11);
+    char* new_array = $1;
+    char* expr = $4;
+    char* elm = $6;
+    char* size = $8;
+    char* new_type = $11;
+    $$ = template("%s* %s = (%s*)malloc(%s * sizeof(%s));\n", new_type, new_array, new_type, size, new_type);
+    strcat($$, template("for (int %s = 0; %s < %s; ++%s)\n", elm, elm, size, elm));
+    strcat($$, template("\t%s[%s] = %s;\n", new_array, elm, expr));
   };
 
 arr_comprehension:
   var_name COLON_ASSIGN LBRACKET expr KEYWORD_FOR var_name COLON var_type KEYWORD_IN var_name KEYWORD_OF INTEGER RBRACKET COLON var_type SEMICOLON
   {
-    $$ = template("%s := [%s for %s: %s in %s of %s] : %s;\n", $1, $4, $6, $8, $10, $12, $15);
+    char* new_array = $1;
+    char* expr = $4;
+    char* elm = $6;
+    char* type = $8;
+    char* array = $10;
+    char* array_ = strdup(array);
+    strcat(array_, "[array_i]");
+    char* size = $12;
+    char* new_type = $15;
+    $$ = template("%s* %s = (%s*)malloc(%s * sizeof(%s));\n", new_type, new_array, new_type, size, new_type);
+    strcat($$, template("for (int array_i "));
+    strcat($$, template("= 0; array_i < %s; ++array_i)\n", size));
+    strcat($$, template("\t%s[array_i] = %s;\n", new_array, replaceWord(expr, elm, array_)));
   };
 
 for_stmt:
