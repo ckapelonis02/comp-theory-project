@@ -6,6 +6,7 @@
 
 extern int yylex(void);
 extern char* replaceWord(const char* s, const char* oldW, const char* newW);
+extern char* concat(const char *s1, const char *s2);
 extern int lineNum;
 int next_avail = 0;
 char* comp_func_names[100];
@@ -110,6 +111,7 @@ char* comp_func_headers[100];
 %type<str> var_decl
 %type<str> var_name
 %type<str> var_type
+%type<str> var_name_extended
 
 %type<str> comp_decl
 %type<str> comp_var_decl_rec
@@ -135,6 +137,8 @@ char* comp_func_headers[100];
 %type<str> comp_range_comprehension
 %type<str> comp_arr_comprehension
 %type<str> comp_func_call
+%type<str> comp_var_name_extended
+%type<str> comp_var_type
 
 %type<str> const_decl
 
@@ -388,7 +392,7 @@ comp_decl:
       }
       strcat($$, template("} %s;\n", type_name));
       strcat($$, template("%s\n", funcs));
-      strcat($$, template("%s ctor_%s = {", type_name, type_name));
+      strcat($$, template("const %s ctor_%s = {", type_name, type_name));
       for (int i = 0; i < next_avail; i++) {
         strcat($$, template(".%s = %s", comp_func_names[i], comp_func_names[i]));
         if (i == next_avail-1) break;
@@ -463,10 +467,19 @@ comp_var_decl_rec:
   };
 
 comp_var_decl:
-  comp_var_decl_list COLON var_type SEMICOLON
+  comp_var_decl_list COLON comp_var_type SEMICOLON
   {
     $$ = template("%s %s;", $3, $1);
   };
+
+comp_var_type:
+  primitive_dt
+  | IDENTIFIER
+  {
+//    comp_func_names[next_avail] = concat("ctor_", strdup($1));
+//    next_avail++;
+  };
+
 
 comp_var_decl_list:
   comp_var_name_
@@ -482,11 +495,22 @@ comp_var_name_:
   };
 
 comp_var_name:
-  HASHTAG var_name
+  HASHTAG IDENTIFIER
   {
     $$ = template("self->%s", $2);
   };
   | var_name
+  | HASHTAG IDENTIFIER LBRACKET comp_expr RBRACKET
+  {
+    $$ = template("self->%s[self->%s]", $2, $4);
+  };
+
+comp_var_name_extended:
+  comp_var_name
+  | comp_var_name_extended PERIOD comp_var_name
+  {
+    $$ = template("%s.%s", $1, $3);
+  };
 
 comp_stmts:
   comp_stmt
@@ -550,7 +574,7 @@ comp_for_stmt:
   {
     $$ = template("for (int %s = %s; %s < %s; %s += %s) {\n%s}\n", $2, $5, $2, $7, $2, $9, $12);
   };
-  | KEYWORD_FOR comp_var_name KEYWORD_IN LBRACKET expr COLON expr RBRACKET COLON stmts KEYWORD_ENDFOR SEMICOLON
+  | KEYWORD_FOR comp_var_name KEYWORD_IN LBRACKET comp_expr COLON comp_expr RBRACKET COLON comp_stmts KEYWORD_ENDFOR SEMICOLON
   {
     $$ = template("for (int %s = %s; %s < %s; %s++) {\n%s}\n", $2, $5, $2, $7, $2, $10);
   };
@@ -612,9 +636,10 @@ comp_if_stmt:
   };
 
 comp_func_call:
-  comp_var_name LPAREN comp_expr_list RPAREN
+  comp_var_name_extended LPAREN comp_expr_list RPAREN
 {
-  $$ = template("%s(&self->%s%s)", $1, $1, $3);
+//  $$ = template("%s(&self->%s%s)", $1, $1, $3);
+  $$ = template("%s(%s)", $1, $3);
 };
 
 comp_expr_list:
@@ -623,16 +648,13 @@ comp_expr_list:
     $$ = "";
   };
   | comp_expr
-  {
-    $$ = ", ";
-  };
   | comp_expr_list COMMA comp_expr
   {
-    $$ = template(", %s, %s", $1, $3);
+    $$ = template("%s, %s", $1, $3);
   };
 
 comp_expr:
-  operand
+  comp_operand
   | comp_expr PLUS comp_expr
   {
     $$ = template("%s + %s", $1, $3);
@@ -713,7 +735,7 @@ comp_expr:
 //  };
 
 comp_operand:
-  comp_var_name
+  comp_var_name_extended
   | comp_func_call
   | INTEGER
   | FLOAT
@@ -997,18 +1019,24 @@ if_stmt:
   };
 
 func_call:
-  IDENTIFIER LPAREN expr_list RPAREN
+  var_name_extended LPAREN expr_list RPAREN
 {
   $$ = template("%s(%s)", $1, $3);
 };
 
+var_name_extended:
+  var_name
+  | var_name_extended PERIOD var_name
+  {
+    $$ = template("%s.%s", $1, $3);
+  };
 
 
 %%
 
 int main() {
-  if (yyparse() == 0)
-    printf("\nAccepted!\n");
+  if (yyparse() == 0) {}
+//    printf("\nAccepted!\n");
   else
     printf("\nRejected!\n");
 }
