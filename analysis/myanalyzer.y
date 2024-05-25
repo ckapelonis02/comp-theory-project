@@ -117,9 +117,24 @@ char* comp_func_headers[100];
 %type<str> comp_var_decl_list
 %type<str> comp_var_name
 %type<str> comp_func_decl_rec
+%type<str> comp_func_body
+%type<str> comp_var_name_
 %type<str> comp_func_decl
 %type<str> comp_func_header
 %type<str> comp_func_param_list
+%type<str> comp_expr
+%type<str> comp_operand
+%type<str> comp_expr_list
+%type<str> comp_stmt
+%type<str> comp_stmts
+%type<str> comp_if_stmt
+%type<str> comp_return_stmt
+%type<str> comp_while_stmt
+%type<str> comp_for_stmt
+%type<str> comp_assign_stmt
+%type<str> comp_range_comprehension
+%type<str> comp_arr_comprehension
+%type<str> comp_func_call
 
 %type<str> const_decl
 
@@ -396,7 +411,13 @@ comp_func_decl_rec:
   };
 
 comp_func_decl:
-  comp_func_header func_body func_end
+  comp_func_header comp_func_body func_end
+  {
+    $$ = template("%s%s%s", $1, $2, $3);
+  };
+
+comp_func_body:
+  const_decl_rec var_decl_rec comp_stmts
   {
     $$ = template("%s%s%s", $1, $2, $3);
   };
@@ -448,17 +469,265 @@ comp_var_decl:
   };
 
 comp_var_decl_list:
-  comp_var_name
-  | comp_var_decl_list COMMA comp_var_name
+  comp_var_name_
+  | comp_var_decl_list COMMA comp_var_name_
   {
     $$ = template("%s, %s", $1, $3);
+  };
+
+comp_var_name_:
+  HASHTAG var_name
+  {
+    $$ = template("%s", $2);
   };
 
 comp_var_name:
   HASHTAG var_name
   {
-    $$ = template("%s", $2);
+    $$ = template("self->%s", $2);
   };
+  | var_name
+
+comp_stmts:
+  comp_stmt
+  {
+    $$ = template("%s", $1);
+  };
+  | comp_stmts comp_stmt
+  {
+    $$ = template("%s%s", $1, $2);
+  };
+
+comp_stmt:
+  empty_stmt
+  | comp_if_stmt
+  | comp_func_call SEMICOLON
+  {
+    $$ = template("%s;\n", $1);
+  };
+  | comp_return_stmt
+  | break_stmt
+  | continue_stmt
+  | comp_while_stmt
+  | comp_for_stmt
+  | comp_assign_stmt
+  | comp_range_comprehension
+  | comp_arr_comprehension
+
+comp_range_comprehension:
+  comp_var_name COLON_ASSIGN LBRACKET comp_expr KEYWORD_FOR comp_var_name COLON INTEGER RBRACKET COLON var_type SEMICOLON
+  {
+    char* new_array = $1;
+    char* expr = $4;
+    char* elm = $6;
+    char* size = $8;
+    char* new_type = $11;
+    $$ = template("%s* %s = (%s*)malloc(%s * sizeof(%s));\n", new_type, new_array, new_type, size, new_type);
+    strcat($$, template("for (int %s = 0; %s < %s; ++%s)\n", elm, elm, size, elm));
+    strcat($$, template("\t%s[%s] = %s;\n", new_array, elm, expr));
+  };
+
+comp_arr_comprehension:
+  comp_var_name COLON_ASSIGN LBRACKET comp_expr KEYWORD_FOR comp_var_name COLON var_type KEYWORD_IN comp_var_name KEYWORD_OF INTEGER RBRACKET COLON var_type SEMICOLON
+  {
+    char* new_array = $1;
+    char* expr = $4;
+    char* elm = $6;
+    char* type = $8;
+    char* array = $10;
+    char* array_ = strdup(array);
+    strcat(array_, "[array_i]");
+    char* size = $12;
+    char* new_type = $15;
+    $$ = template("%s* %s = (%s*)malloc(%s * sizeof(%s));\n", new_type, new_array, new_type, size, new_type);
+    strcat($$, template("for (int array_i "));
+    strcat($$, template("= 0; array_i < %s; ++array_i)\n", size));
+    strcat($$, template("\t%s[array_i] = %s;\n", new_array, replaceWord(expr, elm, array_)));
+  };
+
+comp_for_stmt:
+  KEYWORD_FOR comp_var_name KEYWORD_IN LBRACKET comp_expr COLON comp_expr COLON comp_expr RBRACKET COLON comp_stmts KEYWORD_ENDFOR SEMICOLON
+  {
+    $$ = template("for (int %s = %s; %s < %s; %s += %s) {\n%s}\n", $2, $5, $2, $7, $2, $9, $12);
+  };
+  | KEYWORD_FOR comp_var_name KEYWORD_IN LBRACKET expr COLON expr RBRACKET COLON stmts KEYWORD_ENDFOR SEMICOLON
+  {
+    $$ = template("for (int %s = %s; %s < %s; %s++) {\n%s}\n", $2, $5, $2, $7, $2, $10);
+  };
+
+comp_while_stmt:
+  KEYWORD_WHILE LPAREN comp_expr RPAREN COLON comp_stmts KEYWORD_ENDWHILE SEMICOLON
+  {
+    $$ = template("while (%s) {\n%s}\n", $3, $6);
+  };
+
+comp_assign_stmt:
+  comp_var_name ASSIGN comp_expr SEMICOLON
+  {
+    $$ = template("%s = %s;\n", $1, $3);
+  }
+  | comp_var_name PLUS_ASSIGN comp_expr SEMICOLON
+  {
+    $$ = template("%s += %s;\n", $1, $3);
+  }
+  | comp_var_name MINUS_ASSIGN comp_expr SEMICOLON
+  {
+    $$ = template("%s -= %s;\n", $1, $3);
+  }
+  | comp_var_name MULT_ASSIGN comp_expr SEMICOLON
+  {
+    $$ = template("%s *= %s;\n", $1, $3);
+  }
+  | comp_var_name DIV_ASSIGN comp_expr SEMICOLON
+  {
+    $$ = template("%s /= %s;\n", $1, $3);
+  }
+  | comp_var_name MOD_ASSIGN comp_expr SEMICOLON
+  {
+    $$ = template("%s %%= %s;\n", $1, $3);
+  }
+  | comp_var_name COLON_ASSIGN comp_expr SEMICOLON
+  {
+    $$ = template("%s := %s;\n", $1, $3);
+  };
+
+comp_return_stmt:
+  KEYWORD_RETURN SEMICOLON
+  {
+    $$ = "return;\n";
+  };
+  | KEYWORD_RETURN comp_expr SEMICOLON
+  {
+    $$ = template("return %s;\n", $2);
+  };
+
+comp_if_stmt:
+  KEYWORD_IF LPAREN comp_expr RPAREN COLON comp_stmts KEYWORD_ENDIF SEMICOLON
+  {
+    $$ = template("if (%s) {\n%s}\n", $3, $6);
+  };
+  | KEYWORD_IF LPAREN comp_expr RPAREN COLON comp_stmts KEYWORD_ELSE COLON comp_stmts KEYWORD_ENDIF SEMICOLON
+  {
+    $$ = template("if (%s) {\n%s}\nelse {\n%s}\n", $3, $6, $9);
+  };
+
+comp_func_call:
+  comp_var_name LPAREN comp_expr_list RPAREN
+{
+  $$ = template("%s(&self->%s%s)", $1, $1, $3);
+};
+
+comp_expr_list:
+  %empty
+  {
+    $$ = "";
+  };
+  | comp_expr
+  {
+    $$ = ", ";
+  };
+  | comp_expr_list COMMA comp_expr
+  {
+    $$ = template(", %s, %s", $1, $3);
+  };
+
+comp_expr:
+  operand
+  | comp_expr PLUS comp_expr
+  {
+    $$ = template("%s + %s", $1, $3);
+  };
+  | comp_expr MINUS comp_expr
+  {
+    $$ = template("%s - %s", $1, $3);
+  };
+  | comp_expr MULT comp_expr
+  {
+    $$ = template("%s * %s", $1, $3);
+  };
+  | comp_expr DIV comp_expr
+  {
+    $$ = template("%s / %s", $1, $3);
+  };
+  | comp_expr MOD comp_expr
+  {
+    $$ = template("%s", $1);
+    strcat($$, " % ");
+    strcat($$, template("%s", $3));
+  };
+  | comp_expr GT comp_expr
+  {
+    $$ = template("%s > %s", $1, $3);
+  };
+  | comp_expr LT comp_expr
+  {
+    $$ = template("%s < %s", $1, $3);
+  };
+  | comp_expr GEQ comp_expr
+  {
+    $$ = template("%s >= %s", $1, $3);
+  };
+  | comp_expr LEQ comp_expr
+  {
+    $$ = template("%s <= %s", $1, $3);
+  };
+  | comp_expr EQ comp_expr
+  {
+    $$ = template("%s == %s", $1, $3);
+  };
+  | comp_expr NEQ comp_expr
+  {
+    $$ = template("%s != %s", $1, $3);
+  };
+  | comp_expr KEYWORD_AND comp_expr
+  {
+    $$ = template("%s && %s", $1, $3);
+  };
+  | comp_expr KEYWORD_OR comp_expr
+  {
+    $$ = template("%s || %s", $1, $3);
+  };
+  | KEYWORD_NOT comp_expr
+  {
+    $$ = template("! %s", $2);
+  };
+  | PLUS comp_expr
+  {
+    $$ = template("+%s", $2);
+  };
+  | MINUS comp_expr
+  {
+    $$ = template("-%s", $2);
+  };
+  | comp_expr POW comp_expr
+  {
+    $$ = template("pow(%s, %s)", $1, $3);
+  };
+  | LPAREN comp_expr RPAREN
+  {
+    $$ = template("(%s)", $2);
+  };
+//  | expr PERIOD expr
+//  {
+//    $$ = template("%s.%s", $1, $3);
+//  };
+
+comp_operand:
+  comp_var_name
+  | comp_func_call
+  | INTEGER
+  | FLOAT
+  | bool_dt
+  | CONST_STRING
+  {
+    $$ = template("\"%s\"", $1);
+  };
+
+
+
+
+
+
 
 
 
