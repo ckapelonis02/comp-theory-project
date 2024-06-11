@@ -7,8 +7,7 @@
 
 const char *c_prologue =
     "#include \"lambdalib.h\"\n"
-    "#include <math.h>\n"
-    "\n";
+    "#include <math.h>\n";
 extern FILE* yyin;
 extern char* print_line_n(FILE *fp, int n);
 extern int yylex(void);
@@ -1066,7 +1065,7 @@ func_call:
   }
   | var_name PERIOD var_name LPAREN period_expr_list RPAREN
   {
-    $$ = template("%s.%s(&%s)", $1, $3, $1);
+    $$ = template("%s.%s(&%s%s)", $1, $3, $1, $5);
   };
 
 period_expr_list:
