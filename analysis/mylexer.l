@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cgen.h"
 #include "myanalyzer.tab.h"
 #define MACROS_SIZE 100
 #define LINE_SIZE 512

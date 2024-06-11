@@ -2,17 +2,51 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "cgen.h"
+#include <assert.h>
+#include <stdarg.h>
 
+const char *c_prologue =
+    "#include \"lambdalib.h\"\n"
+    "#include <math.h>\n"
+    "\n";
+extern FILE* yyin;
+extern char* print_line_n(FILE *fp, int n);
 extern int yylex(void);
 extern char* replaceWord(const char* s, const char* oldW, const char* newW);
 extern char* concat(const char *s1, const char *s2);
+int yyerror_count = 0;
+void yyerror(char const *pat, ...);
+char *template(const char *pat, ...);
 extern int lineNum;
 int next_avail = 0;
-int next_avail_comp = 0;
 char* comp_func_names[100];
 char* comp_func_headers[100];
-char* comp_names[100];
+
+typedef struct sstream
+{
+  char *buffer;
+  size_t bufsize;
+  FILE* stream;
+} sstream;
+
+void ssopen(sstream *S) { S->stream = open_memstream(&S->buffer, &S->bufsize); }
+
+char *ssvalue(sstream *S) {
+  fflush(S->stream);
+  return S->buffer;
+}
+
+void ssclose(sstream *S) { fclose(S->stream); }
+
+char *replaceChar(char* const source, char toBeReplaced, char replacer) {
+  for (int i = 0; i < strlen(source); ++i) {
+    if (source[i] == toBeReplaced) {
+      source[i] = replacer;
+    }
+  }
+  return source;
+}
+
 
 %}
 
@@ -387,8 +421,6 @@ comp_decl:
   KEYWORD_ENDCOMP SEMICOLON
   {
     char* type_name = $2;
-    comp_names[next_avail_comp] = type_name;
-    next_avail_comp++;
     char* vars = $4;
     char* funcs = $5;
     $$ = template("#define SELF struct %s *self\n", type_name);
@@ -1057,4 +1089,23 @@ int main() {
 //    printf("\nAccepted!\n");
   else
     printf("\nRejected!\n");
+}
+
+void yyerror(char const *pat, ...) {
+  fprintf(stderr, "Syntax error in line %d: %s\n", lineNum, print_line_n(yyin, lineNum));
+  yyerror_count++;
+}
+
+char *template(const char *pat, ...) {
+  sstream S;
+  ssopen(&S);
+
+  va_list arg;
+  va_start(arg, pat);
+  vfprintf(S.stream, pat, arg);
+  va_end(arg);
+
+  char *ret = ssvalue(&S);
+  ssclose(&S);
+  return ret;
 }

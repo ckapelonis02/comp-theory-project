@@ -62,9 +62,9 @@ comp Order:
   #book: Book;
   #quantity: integer;
   #shippingAddress: Address;
-  #delivered: bool;
+  #delivered: boolean;
 
-  def setOrder(orNum: integer, b: Book, q: integer, sh: Address, del: bool):
+  def setOrder(orNum: integer, b: Book, q: integer, sh: Address, del: boolean):
     #orderNum = orNum;
     #book = b;
     #quantity = q;
