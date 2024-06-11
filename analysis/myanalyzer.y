@@ -9,8 +9,10 @@ extern char* replaceWord(const char* s, const char* oldW, const char* newW);
 extern char* concat(const char *s1, const char *s2);
 extern int lineNum;
 int next_avail = 0;
+int next_avail_comp = 0;
 char* comp_func_names[100];
 char* comp_func_headers[100];
+char* comp_names[100];
 
 %}
 
@@ -111,7 +113,6 @@ char* comp_func_headers[100];
 %type<str> var_decl
 %type<str> var_name
 %type<str> var_type
-%type<str> var_name_extended
 
 %type<str> comp_decl
 %type<str> comp_var_decl_rec
@@ -145,6 +146,7 @@ char* comp_func_headers[100];
 %type<str> expr
 %type<str> operand
 %type<str> expr_list
+%type<str> period_expr_list
 
 %type<str> stmt
 %type<str> stmts
@@ -313,9 +315,13 @@ func_end:
 *                  VARIABLES
 * */
 var_decl:
-  var_decl_list COLON var_type SEMICOLON
+  var_decl_list COLON primitive_dt SEMICOLON
   {
     $$ = template("%s %s;", $3, $1);
+  }
+  | var_decl_list COLON IDENTIFIER SEMICOLON
+  {
+    $$ = template("%s %s = ctor_%s;", $3, $1, $3);
   };
 
 var_decl_list:
@@ -333,7 +339,8 @@ var_name:
   };
 
 var_type:
-  primitive_dt | IDENTIFIER
+  primitive_dt
+  | IDENTIFIER
 
 
 
@@ -380,6 +387,8 @@ comp_decl:
   KEYWORD_ENDCOMP SEMICOLON
   {
     char* type_name = $2;
+    comp_names[next_avail_comp] = type_name;
+    next_avail_comp++;
     char* vars = $4;
     char* funcs = $5;
     $$ = template("#define SELF struct %s *self\n", type_name);
@@ -1019,19 +1028,28 @@ if_stmt:
   };
 
 func_call:
-  var_name_extended LPAREN expr_list RPAREN
-{
-  $$ = template("%s(%s)", $1, $3);
-};
-
-var_name_extended:
-  var_name
-  | var_name_extended PERIOD var_name
+  var_name LPAREN expr_list RPAREN
   {
-    $$ = template("%s.%s", $1, $3);
+    $$ = template("%s(%s)", $1, $3);
+  }
+  | var_name PERIOD var_name LPAREN period_expr_list RPAREN
+  {
+    $$ = template("%s.%s(&%s)", $1, $3, $1);
   };
 
-
+period_expr_list:
+  %empty
+  {
+    $$ = "";
+  };
+  | expr
+  {
+    $$ = template(", %s", $1);
+  };
+  | period_expr_list COMMA expr
+  {
+    $$ = template(", %s, %s", $1, $3);
+  };
 %%
 
 int main() {
