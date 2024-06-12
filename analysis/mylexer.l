@@ -21,7 +21,7 @@ int avail = 0;
 char* ref_macro_id = NULL;
 
 int lineNum = 1;
-int verbose = 0; // Global variable to control verbosity
+int verbose = 0;
 
 #define VERBOSE_PRINT(fmt, ...) \
   do { if (verbose) printf(fmt, __VA_ARGS__); } while (0)
@@ -40,16 +40,16 @@ STRING   ([0-9a-zA-Z\., \-\+\*\/\:\_\$\%\!\#\@\&\~\^\(\)]|\\[\\ntr\\"\\])*
 %x MACRO_REPL
 
 %%                        
-([ \r\t])|("--"[^\n]*)	/* skip these */
+([ \r\t])|("--"[^\n]*)
 
-\"                 { BEGIN(string); }
-<string>{STRING}   { VERBOSE_PRINT("Token CONST_STRING: \"%s\"\n", yytext); yylval.str = strdup(yytext); return CONST_STRING; }
-<string>\"         { BEGIN(INITIAL); }
+\"                    { BEGIN(string); }
+<string>{STRING}      { VERBOSE_PRINT("Token CONST_STRING: \"%s\"\n", yytext); yylval.str = strdup(yytext); return CONST_STRING; }
+<string>\"            { BEGIN(INITIAL); }
 
-"@defmacro"[ \r\t]+        { BEGIN(MACRO_DEF); }
-<MACRO_DEF>{ID}    { ref_macro_id = strdup(yytext); BEGIN(MACRO_REPL); }
+"@defmacro"[ \r\t]+   { BEGIN(MACRO_DEF); }
+<MACRO_DEF>{ID}       { ref_macro_id = strdup(yytext); BEGIN(MACRO_REPL); }
 <MACRO_REPL>[ \r\t]+
-<MACRO_REPL>.*\n    { add_macro(create_macro(ref_macro_id, strdup(yytext))); BEGIN(INITIAL); }
+<MACRO_REPL>.*\n      { add_macro(create_macro(ref_macro_id, strdup(yytext))); BEGIN(INITIAL); }
 
 "scalar"           { VERBOSE_PRINT("Token KEYWORD_SCALAR: %s\n", yytext); return KEYWORD_SCALAR; }
 "str"              { VERBOSE_PRINT("Token KEYWORD_STR: %s\n", yytext); return KEYWORD_STR; }
@@ -105,31 +105,27 @@ STRING   ([0-9a-zA-Z\., \-\+\*\/\:\_\$\%\!\#\@\&\~\^\(\)]|\\[\\ntr\\"\\])*
 "/="               { VERBOSE_PRINT("Token DIV_ASSIGN: %s\n", yytext); return DIV_ASSIGN; }
 "%="               { VERBOSE_PRINT("Token MOD_ASSIGN: %s\n", yytext); return MOD_ASSIGN; }
 ":="               { VERBOSE_PRINT("Token COLON_ASSIGN: %s\n", yytext); return COLON_ASSIGN; }
-"#"               { VERBOSE_PRINT("Token HASHTAG: %s\n", yytext); return HASHTAG; }
+"#"                { VERBOSE_PRINT("Token HASHTAG: %s\n", yytext); return HASHTAG; }
 {ID}               {
-              const char* repl = get_macro(yytext);
-              if (repl == NULL) {
-                VERBOSE_PRINT("Token IDENTIFIER: %s\n", yytext);
-                yylval.str = strdup(yytext);
-                return IDENTIFIER;
-              }
-              else {
-                for (int i = strlen(repl)-1; i >= 0; i--)
-                  unput(repl[i]);
-              }
-            }
-{INTEGER}          {
-                      yylval.str = strdup(yytext);
-                      VERBOSE_PRINT("Token INTEGER: %s\n", yytext);
-                      return INTEGER;
-}
+                      const char* repl = get_macro(yytext);
+                      if (repl == NULL) {
+                        VERBOSE_PRINT("Token IDENTIFIER: %s\n", yytext);
+                        yylval.str = strdup(yytext);
+                        return IDENTIFIER;
+                      }
+                      else {
+                        for (int i = strlen(repl)-1; i >= 0; i--)
+                          unput(repl[i]);
+                      }
+                   }
+{INTEGER}          { VERBOSE_PRINT("Token INTEGER: %s\n", yytext); yylval.str = strdup(yytext); return INTEGER; }
 {FLOAT}            { VERBOSE_PRINT("Token FLOAT: %s\n", yytext); yylval.str = strdup(yytext); return FLOAT; }
-\n 					 ++lineNum;
+\n                 ++lineNum;
 .                  {
-              printf("Unrecognized token %s in line %d: %s\n", yytext, lineNum, print_line_n(yyin, lineNum));
-              exit(1);
-            }
-<<EOF>> 	        	 return EOF;
+                      printf("Unrecognized token %s in line %d: %s\n", yytext, lineNum, print_line_n(yyin, lineNum));
+                      exit(1);
+                   }
+<<EOF>>            return EOF;
 
 %%
 char* print_line_n(FILE *fp, int n) {

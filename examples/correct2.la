@@ -1,0 +1,104 @@
+-- A dummy program
+
+comp Pet:
+  #name: str;
+  #species: str;
+  #age: integer;
+
+  def newPet(n: str, s:str, a:integer):
+    #name = n;
+    #species = s;
+    if (a < 0):
+      writeStr("Invalid age!\n");
+      exit(0);
+    endif;
+    #age = a;
+  enddef;
+
+  def printPet():
+    writeStr(#name);
+    writeStr("\t\t");
+    writeInteger(#age);
+    writeStr("\t");
+    writeStr(#species);
+    writeStr("\n");
+  enddef;
+endcomp;
+
+comp Person:
+  #name: str;
+  #surname: str;
+  #age: integer;
+  #gender: bool;
+  #pet: Pet;
+  
+  def newPerson(n:str, s:str, a:integer, g:bool, p:Pet):
+    #name = n;
+    #surname = s;
+    if (a < 0):
+      writeStr("Invalid age!\n");
+      exit(0);
+    endif;
+    #age = a;
+    #gender = g;
+    #pet = p;
+  enddef;
+
+  def printPerson():
+    writeStr(#name);
+    writeStr("\t");
+    writeStr(#surname);
+    writeStr("\t");
+    writeInteger(#age);
+    writeStr("\t");
+    if (#gender):
+      writeStr("Male\t");
+    else:
+      writeStr("Female\t");
+    endif;
+    writeStr("\t");
+    writeStr("\n");
+  enddef;
+endcomp;
+
+
+def main():
+  person1: Person;
+  person2: Person;
+  person3: Person;
+  person4: Person;
+  person5: Person;
+
+  pet1: Pet;
+  pet2: Pet;
+  pet3: Pet;
+  pet4: Pet;
+
+  pet1.newPet("Max", "Dog", 1);
+  pet2.newPet("Bella", "Cat", 3);
+  pet3.newPet("Charlie", "Parrot", 2);
+  pet4.newPet("Daisy", "Rabbit", 5);
+
+  person1.newPerson("Charilaos", "Kapelonis", 22, True, pet1);
+  person2.newPerson("Argiroula", "Georgiou", 21, False, pet1);
+  person3.newPerson("Anastasia", "Sotiropoulou", 26, False, pet2);
+  person4.newPerson("Elenitsa", "Koukourou", 22, False, pet3);
+  person5.newPerson("Eleftherios", "Petridis", 35, True, pet4);
+
+  writeStr("Name\t\tSurname\t\tAge\tGender\n");
+  writeStr("______________________________________________________\n");
+  person1.printPerson();
+  person2.printPerson();
+  person3.printPerson();
+  person4.printPerson();
+  person5.printPerson();
+
+  writeStr("\n\n\n");
+
+  writeStr("Name\t\tAge\tSpecies\n");
+  writeStr("____________________________________\n");
+  pet1.printPet();
+  pet2.printPet();
+  pet3.printPet();
+  pet4.printPet();
+enddef;

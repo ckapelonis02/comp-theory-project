@@ -86,18 +86,18 @@ char *replaceChar(char* const source, char toBeReplaced, char replacer) {
 %token HASHTAG                316
 
 
-%token SEMICOLON        292
+%token SEMICOLON       292
 
-%right ASSIGN           305
-%right PLUS_ASSIGN      306
-%right MINUS_ASSIGN     307
-%right COLON_ASSIGN     311
-%right MULT_ASSIGN      308
-%right DIV_ASSIGN       309
-%right MOD_ASSIGN       310
+%right ASSIGN          305
+%right PLUS_ASSIGN     306
+%right MINUS_ASSIGN    307
+%right COLON_ASSIGN    311
+%right MULT_ASSIGN     308
+%right DIV_ASSIGN      309
+%right MOD_ASSIGN      310
 %left KEYWORD_OR       276
 %left KEYWORD_AND      275
-%right KEYWORD_NOT      274
+%right KEYWORD_NOT     274
 %left EQ               299
 %left NEQ              300
 %left LT               301
@@ -109,7 +109,7 @@ char *replaceChar(char* const source, char toBeReplaced, char replacer) {
 %left MULT             295
 %left DIV              296
 %left MOD              297
-%right POW              298
+%right POW             298
 %left LBRACKET         288
 %left RBRACKET         289
 %left PERIOD           291
@@ -428,7 +428,7 @@ comp_decl:
 
     if (next_avail > 0) {
       for (int i = 0; i < next_avail; i++) {
-        strcat($$, template("%s\n", comp_func_headers[i]));
+        strcat($$, template("%s", comp_func_headers[i]));
       }
       strcat($$, template("} %s;\n", type_name));
       strcat($$, template("%s\n", funcs));
@@ -515,10 +515,6 @@ comp_var_decl:
 comp_var_type:
   primitive_dt
   | IDENTIFIER
-  {
-//    comp_func_names[next_avail] = concat("ctor_", strdup($1));
-//    next_avail++;
-  };
 
 
 comp_var_decl_list:
@@ -542,7 +538,7 @@ comp_var_name:
   | var_name
   | HASHTAG IDENTIFIER LBRACKET comp_expr RBRACKET
   {
-    $$ = template("self->%s[self->%s]", $2, $4);
+    $$ = template("self->%s[%s]", $2, $4);
   };
 
 comp_var_name_extended:
@@ -677,10 +673,9 @@ comp_if_stmt:
 
 comp_func_call:
   comp_var_name_extended LPAREN comp_expr_list RPAREN
-{
-//  $$ = template("%s(&self->%s%s)", $1, $1, $3);
-  $$ = template("%s(%s)", $1, $3);
-};
+  {
+    $$ = template("%s(%s)", $1, $3);
+  };
 
 comp_expr_list:
   %empty
@@ -1079,7 +1074,7 @@ period_expr_list:
   };
   | period_expr_list COMMA expr
   {
-    $$ = template(", %s, %s", $1, $3);
+    $$ = template("%s, %s", $1, $3);
   };
 %%
 
